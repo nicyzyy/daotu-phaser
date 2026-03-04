@@ -22,10 +22,13 @@ body {
 }
 
 /* ─── Game Wrapper: contains both canvas and UI ─── */
+/* Fixed at 1280x720 internal size, scaled via JS transform */
 #game-wrapper {
   position: relative;
   width: 1280px;
   height: 720px;
+  transform-origin: 0 0;
+  overflow: hidden;
 }
 
 #game-container {
@@ -35,13 +38,7 @@ body {
   height: 720px;
 }
 
-#game-container canvas {
-  display: block;
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* UI overlay: same size as canvas, layered on top */
+/* UI overlay: exact same size, layered on top */
 #ui-overlay {
   position: absolute;
   top: 0; left: 0;

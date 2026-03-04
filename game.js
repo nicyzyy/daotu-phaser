@@ -730,21 +730,20 @@ window.game_restart = function() {
   game.scene.getScene('BattleScene').scene.restart();
 };
 
-// ─── Responsive Scaling (canvas + UI overlay sync) ───
+// ─── Responsive Scaling ───
+// Scale the ENTIRE wrapper (canvas + UI) together via CSS transform
+// Both stay at internal 1280×720, just visually scaled to fit viewport
 function syncScale() {
   const wrapper = document.getElementById('game-wrapper');
-  const overlay = document.getElementById('ui-overlay');
   const W = 1280, H = 720;
   const vw = window.innerWidth, vh = window.innerHeight;
   const scale = Math.min(vw / W, vh / H);
-  const w = W * scale, h = H * scale;
-  wrapper.style.width = w + 'px';
-  wrapper.style.height = h + 'px';
-  // Scale the overlay using CSS transform (keeps internal 1280x720 coordinate system)
-  overlay.style.transformOrigin = '0 0';
-  overlay.style.transform = `scale(${scale})`;
-  overlay.style.width = W + 'px';
-  overlay.style.height = H + 'px';
+  wrapper.style.transform = `scale(${scale})`;
+  // Center the wrapper
+  const offsetX = (vw - W * scale) / 2;
+  const offsetY = (vh - H * scale) / 2;
+  wrapper.style.marginLeft = offsetX + 'px';
+  wrapper.style.marginTop = offsetY + 'px';
 }
 
 window.addEventListener('resize', syncScale);
