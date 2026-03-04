@@ -730,6 +730,25 @@ window.game_restart = function() {
   game.scene.getScene('BattleScene').scene.restart();
 };
 
+// ─── Responsive Scaling (canvas + UI overlay sync) ───
+function syncScale() {
+  const wrapper = document.getElementById('game-wrapper');
+  const overlay = document.getElementById('ui-overlay');
+  const W = 1280, H = 720;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const scale = Math.min(vw / W, vh / H);
+  const w = W * scale, h = H * scale;
+  wrapper.style.width = w + 'px';
+  wrapper.style.height = h + 'px';
+  // Scale the overlay using CSS transform (keeps internal 1280x720 coordinate system)
+  overlay.style.transformOrigin = '0 0';
+  overlay.style.transform = `scale(${scale})`;
+  overlay.style.width = W + 'px';
+  overlay.style.height = H + 'px';
+}
+
+window.addEventListener('resize', syncScale);
+
 // ─── Launch Phaser ───
 const config = {
   type: Phaser.AUTO,
@@ -739,8 +758,7 @@ const config = {
   backgroundColor: '#080a18',
   scene: [BattleScene],
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    mode: Phaser.Scale.NONE,  // We handle scaling manually
   },
   render: {
     antialias: true,
@@ -749,3 +767,6 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
+
+// Initial scale sync after Phaser creates the canvas
+requestAnimationFrame(syncScale);

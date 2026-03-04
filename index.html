@@ -8,48 +8,48 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="game-container"></div>
+<div id="game-wrapper">
+  <div id="game-container"></div>
+  <!-- UI Overlay — sits inside wrapper, scaled to match canvas -->
+  <div id="ui-overlay">
 
-<!-- ═══ UI Overlay (HTML/CSS, not canvas) ═══ -->
-<div id="ui-overlay">
-
-  <!-- ATB Bar -->
-  <div id="atb-bar">
-    <div id="atb-track"></div>
-    <div id="atb-ready-line"></div>
-    <!-- icons injected by JS -->
-  </div>
-
-  <!-- Battle Log -->
-  <div id="battle-log">
-    <div id="log-content"></div>
-  </div>
-
-  <!-- Overhead HP bars container -->
-  <div id="overhead-bars"></div>
-
-  <!-- Action Panel -->
-  <div id="action-panel" class="hidden">
-    <div class="panel-header">
-      <img id="action-portrait" src="" alt="">
-      <span id="action-unit-name"></span>
+    <!-- ATB Bar -->
+    <div id="atb-bar">
+      <div id="atb-track"></div>
+      <div id="atb-ready-line"></div>
     </div>
-    <div id="action-buttons"></div>
-  </div>
 
-  <!-- Target Panel -->
-  <div id="target-panel" class="hidden">
-    <div class="panel-title">选择目标</div>
-    <div id="target-buttons"></div>
-    <button class="btn-cancel" onclick="window.game_cancelTarget()">取消</button>
-  </div>
+    <!-- Battle Log -->
+    <div id="battle-log">
+      <div id="log-content"></div>
+    </div>
 
-  <!-- Result Panel -->
-  <div id="result-panel" class="hidden">
-    <div id="result-text"></div>
-    <button id="result-btn" class="btn-xianxia" onclick="window.game_restart()">再战一局</button>
-  </div>
+    <!-- Overhead HP bars container -->
+    <div id="overhead-bars"></div>
 
+    <!-- Action Panel -->
+    <div id="action-panel" class="hidden">
+      <div class="panel-header">
+        <img id="action-portrait" src="" alt="">
+        <span id="action-unit-name"></span>
+      </div>
+      <div id="action-buttons"></div>
+    </div>
+
+    <!-- Target Panel -->
+    <div id="target-panel" class="hidden">
+      <div class="panel-title">选择目标</div>
+      <div id="target-buttons"></div>
+      <button class="btn-cancel" onclick="window.game_cancelTarget()">取消</button>
+    </div>
+
+    <!-- Result Panel -->
+    <div id="result-panel" class="hidden">
+      <div id="result-text"></div>
+      <button id="result-btn" class="btn-xianxia" onclick="window.game_restart()">再战一局</button>
+    </div>
+
+  </div>
 </div>
 
 <script src="game.js"></script>
