@@ -115,11 +115,16 @@ class BattleScene extends Phaser.Scene {
   }
 
   create() {
+    // ─── Dynamic Background System ───
     // BG cover (render space = RW×RH)
     const bg = this.add.image(RW / 2, RH / 2, 'battle_bg');
     const src = this.textures.get('battle_bg').getSourceImage();
     bg.setScale(Math.max(RW / src.width, RH / src.height)).setDepth(-10);
-    this.tweens.add({ targets: bg, x: { from: RW / 2 - 4 * DPR, to: RW / 2 + 4 * DPR }, duration: 10000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    // Slow parallax drift
+    this.tweens.add({ targets: bg, x: { from: RW / 2 - 6 * DPR, to: RW / 2 + 6 * DPR }, duration: 12000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+    // ─── Ambient Particles ───
+    this._createAmbientEffects();
 
     this._createUnits();
     this._spawnSprites();
@@ -127,6 +132,71 @@ class BattleScene extends Phaser.Scene {
     this._buildOverhead();
     this.battleActive = true;
     UI.log('[战] 战斗开始!', 'system');
+  }
+
+  // ─── Ambient Scene Effects ───
+  _createAmbientEffects() {
+    // 1. Floating qi particles (gentle drifting lights)
+    this.time.addEvent({
+      delay: 800, loop: true,
+      callback: () => {
+        const x = Phaser.Math.Between(0, RW);
+        const y = RH + 10 * DPR;
+        const sz = (1.5 + Math.random() * 2.5) * DPR;
+        const colors = [0x88ccff, 0xaaddff, 0x66aaee, 0xccddff, 0xffd080];
+        const c = colors[Math.floor(Math.random() * colors.length)];
+        const p = this.add.circle(x, y, sz, c, 0.15 + Math.random() * 0.25).setDepth(-5);
+        const drift = Phaser.Math.Between(-80, 80) * DPR;
+        this.tweens.add({
+          targets: p,
+          x: x + drift,
+          y: -20 * DPR,
+          alpha: 0,
+          duration: 6000 + Math.random() * 4000,
+          ease: 'Sine.easeInOut',
+          onComplete: () => p.destroy()
+        });
+      }
+    });
+
+    // 2. Ground mist layers (horizontal scrolling fog)
+    for (let i = 0; i < 3; i++) {
+      const mistY = RH * (0.75 + i * 0.08);
+      const mist = this.add.rectangle(RW / 2, mistY, RW * 1.5, 30 * DPR, 0xccddee, 0.04 + i * 0.02).setDepth(-4 + i);
+      this.tweens.add({
+        targets: mist,
+        x: { from: RW / 2 - 100 * DPR, to: RW / 2 + 100 * DPR },
+        alpha: { from: mist.alpha * 0.6, to: mist.alpha },
+        duration: 8000 + i * 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+      });
+    }
+
+    // 3. Occasional energy spark bursts (random positions)
+    this.time.addEvent({
+      delay: 3000, loop: true,
+      callback: () => {
+        const cx = Phaser.Math.Between(RW * 0.2, RW * 0.8);
+        const cy = Phaser.Math.Between(RH * 0.3, RH * 0.7);
+        for (let i = 0; i < 4; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const sp = (10 + Math.random() * 20) * DPR;
+          const sz = (1 + Math.random() * 1.5) * DPR;
+          const s = this.add.circle(cx, cy, sz, 0xffeebb, 0.5).setDepth(-3);
+          this.tweens.add({
+            targets: s,
+            x: cx + Math.cos(a) * sp, y: cy + Math.sin(a) * sp,
+            alpha: 0, duration: 500 + Math.random() * 500,
+            onComplete: () => s.destroy()
+          });
+        }
+      }
+    });
+
+    // 4. Vignette overlay (darkened edges)
+    const vig = this.add.graphics().setDepth(-1);
+    vig.fillStyle(0x000000, 0.3);
+    vig.fillRect(0, 0, RW, 40 * DPR); // top
+    vig.fillRect(0, RH - 30 * DPR, RW, 30 * DPR); // bottom
   }
 
   update(_, delta) {
@@ -370,53 +440,62 @@ class BattleScene extends Phaser.Scene {
   _animDefeat(name) {
     const sp = this.sprites[name];
     if (!sp) return;
+    const u = this.allUnits.find(x => x.name === name);
+    const isAlly = u && u.isPlayer;
     this.tweens.killTweensOf(sp);
-    // Use the hit pose for defeat (more reliable direction), then fade
-    this._pose(name, 'hit');
+    this._pose(name, 'defeated');
     sp.setTint(0xff4444);
 
     const sc = sp.getData('sc');
     const baseY = sp.y;
 
-    // Save current flipX state to ensure direction doesn't change
-    const savedFlipX = sp.flipX;
+    if (isAlly) {
+      // ─── 我方：倒下但不消失 ───
+      this.tweens.chain({
+        targets: sp,
+        tweens: [
+          { alpha: 0.4, duration: 100, yoyo: true, repeat: 2 },
+          // Collapse + tilt
+          { y: baseY + 30 * DPR, scaleY: sc * 0.75, angle: -15,
+            alpha: 0.45, duration: 700, ease: 'Bounce.easeOut' },
+        ]
+      });
+      // Grey out in side panel
+      UI.hideOverhead(name);
+    } else {
+      // ─── 敌方：倒下后消失 ───
+      this.tweens.chain({
+        targets: sp,
+        tweens: [
+          { alpha: 0.4, duration: 100, yoyo: true, repeat: 2 },
+          { y: baseY + 40 * DPR, scaleY: sc * 0.7, alpha: 0.5,
+            duration: 600, ease: 'Bounce.easeOut' },
+          { alpha: 0, duration: 500, ease: 'Quad.easeIn',
+            onComplete: () => { sp.setVisible(false); UI.hideOverhead(name); }
+          },
+        ]
+      });
 
-    this.tweens.chain({
-      targets: sp,
-      tweens: [
-        // Flash red
-        { alpha: 0.4, duration: 100, yoyo: true, repeat: 2 },
-        // Collapse downward
-        { y: baseY + 40 * DPR, scaleY: sc * 0.7, alpha: 0.5,
-          duration: 600, ease: 'Bounce.easeOut',
-          onUpdate: () => { sp.flipX = savedFlipX; } // prevent direction change
-        },
-        // Fade out
-        { alpha: 0, duration: 500, ease: 'Quad.easeIn',
-          onComplete: () => { sp.setVisible(false); UI.hideOverhead(name); }
-        },
-      ]
-    });
-
-    // Death particles (soul wisps)
-    this.time.delayedCall(300, () => {
-      for (let i = 0; i < 10; i++) {
-        const a = Math.random() * Math.PI * 2;
-        const sz = (2 + Math.random() * 3) * DPR;
-        const colors = [0x8844cc, 0xaa66ee, 0x6633aa, 0xcc88ff];
-        const p = this.add.circle(sp.x + Phaser.Math.Between(-20, 20) * DPR,
-          sp.y + Phaser.Math.Between(-10, 20) * DPR, sz, colors[i % 4], 0.8).setDepth(999);
-        this.tweens.add({
-          targets: p,
-          x: p.x + Math.cos(a) * 50 * DPR,
-          y: p.y - 40 * DPR + Math.sin(a) * 30 * DPR,
-          alpha: 0, scaleX: 0.1, scaleY: 0.1,
-          duration: 800 + Math.random() * 400,
-          ease: 'Quad.easeOut',
-          onComplete: () => p.destroy()
-        });
-      }
-    });
+      // Death particles (soul wisps) - only for enemies
+      this.time.delayedCall(300, () => {
+        for (let i = 0; i < 10; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const sz = (2 + Math.random() * 3) * DPR;
+          const colors = [0x8844cc, 0xaa66ee, 0x6633aa, 0xcc88ff];
+          const p = this.add.circle(sp.x + Phaser.Math.Between(-20, 20) * DPR,
+            sp.y + Phaser.Math.Between(-10, 20) * DPR, sz, colors[i % 4], 0.8).setDepth(999);
+          this.tweens.add({
+            targets: p,
+            x: p.x + Math.cos(a) * 50 * DPR,
+            y: p.y - 40 * DPR + Math.sin(a) * 30 * DPR,
+            alpha: 0, scaleX: 0.1, scaleY: 0.1,
+            duration: 800 + Math.random() * 400,
+            ease: 'Quad.easeOut',
+            onComplete: () => p.destroy()
+          });
+        }
+      });
+    }
   }
 
   // ─── CAST (magical / skill) ───
