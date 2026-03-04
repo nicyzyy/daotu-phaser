@@ -435,6 +435,17 @@ class BattleScene extends Phaser.Scene {
         },
       ]
     });
+    // Safety fallback: clear tint after max animation time in case chain gets interrupted
+    this.time.delayedCall(500, () => {
+      if (sp.tintTopLeft !== 0xffffff) { sp.clearTint(); }
+    });
+    this.time.delayedCall(800, () => {
+      const u = this.allUnits.find(x => x.name === tgt);
+      if (u && u.hp > 0 && sp.tintTopLeft !== 0xffffff) {
+        sp.clearTint();
+        this._resetIdle(tgt);
+      }
+    });
   }
 
   // ─── DEFEAT ───
