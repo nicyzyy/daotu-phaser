@@ -45,7 +45,7 @@ class BattleUnit {
 // ─── Config ───
 const SPRITE_MAP = {
   '云逸': 'yunyi', '灵溪': 'lingxi',
-  '凤鸣': 'fengming', '墨夜': 'moye', '紫萱': 'zixuan',
+  '凤鸣': 'fengming', '霜凝': 'moye', '药仙': 'zixuan',
   '妖狼': 'wolf', '毒蛇精': 'snake', '石魔': 'golem',
   '九尾妖狐': 'yaohu', '幽冥鬼王': 'guiwang',
 };
@@ -54,7 +54,7 @@ const SKILL_ICONS = {
   '御剑术': '⚔️', '万剑归宗': '🗡️', '聚灵诀': '💠',
   '灵火术': '🔥', '天火焚原': '🌋', '回春术': '🌿',
   '破音弦': '🎵', '天籁灭魂曲': '🎶', '乐愈术': '🎼',
-  '暗影刺': '🗡️', '千影噬杀': '👤', '隐遁术': '💨',
+  '冰魄笛音': '❄️', '霜华万里': '🌨️', '冰心护体': '🛡️',
   '灵草术': '🌱', '万灵回春': '🌸', '净化术': '✨',
 };
 
@@ -259,16 +259,16 @@ class BattleScene extends Phaser.Scene {
           new SkillData('乐愈术', '琴音治愈单体', 20, 35, 'single_ally', 'heal'),
         ]
       }),
-      new BattleUnit('墨夜', true, {
-        hp: 95, mp: 50, attack: 28, defense: 4, agility: 95, spirit: 8, realm: '炼气期九层',
+      new BattleUnit('霜凝', true, {
+        hp: 95, mp: 90, attack: 12, defense: 6, agility: 70, spirit: 25, realm: '炼气期八层',
         skills: [
-          new SkillData('暗影刺', '暗影穿刺单体', 8, 35, 'single', 'physical'),
-          new SkillData('千影噬杀', '暗影群攻', 20, 22, 'all', 'physical'),
-          new SkillData('隐遁术', '消隐回避一回合', 10, 0, 'self', 'buff'),
+          new SkillData('冰魄笛音', '冰系音波攻击单体', 10, 30, 'single', 'magical'),
+          new SkillData('霜华万里', '冰霜攻击全体', 25, 20, 'all', 'magical'),
+          new SkillData('冰心护体', '冰盾保护自身', 12, 0, 'self', 'buff'),
         ]
       }),
-      new BattleUnit('紫萱', true, {
-        hp: 100, mp: 120, attack: 6, defense: 7, agility: 45, spirit: 30, realm: '炼气期六层',
+      new BattleUnit('药仙', true, {
+        hp: 100, mp: 120, attack: 6, defense: 7, agility: 45, spirit: 30, realm: '炼气期七层',
         skills: [
           new SkillData('灵草术', '灵草治愈单体', 10, 40, 'single_ally', 'heal'),
           new SkillData('万灵回春', '全体回复', 35, 25, 'all_ally', 'heal'),
