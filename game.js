@@ -57,33 +57,34 @@ const SKILL_ICONS = {
 // 支持双方各 5 人，分前排(2)和后排(3)
 // 我方在左侧面向右，敌方在右侧面向左
 // row: 'front'=前排(靠中间), 'back'=后排(靠边)
-const CHAR_HEIGHT = 140; // 所有角色统一显示高度(CSS px)
+const CHAR_HEIGHT = 200; // 所有角色统一显示高度(CSS px) — 加大确保2K清晰
 
-// 我方站位 (左侧)
+// 我方站位 (左侧) — 角色更靠中间，战场感更强
 const ALLY_SLOTS = [
-  // 前排 (靠中间, x 较大)
-  { x: 0.28, y: 0.42, row: 'front' },  // 前排上
-  { x: 0.26, y: 0.58, row: 'front' },  // 前排下
-  // 后排 (靠左边, x 较小)
-  { x: 0.14, y: 0.34, row: 'back' },   // 后排上
-  { x: 0.12, y: 0.50, row: 'back' },   // 后排中
-  { x: 0.14, y: 0.66, row: 'back' },   // 后排下
+  // 前排 (靠中间)
+  { x: 0.30, y: 0.40, row: 'front' },
+  { x: 0.28, y: 0.56, row: 'front' },
+  // 后排
+  { x: 0.16, y: 0.33, row: 'back' },
+  { x: 0.14, y: 0.48, row: 'back' },
+  { x: 0.16, y: 0.63, row: 'back' },
 ];
 
-// 敌方站位 (右侧, 镜像)
+// 敌方站位 (右侧)
 const ENEMY_SLOTS = [
-  // 前排 (靠中间, x 较小)
-  { x: 0.72, y: 0.42, row: 'front' },
-  { x: 0.74, y: 0.58, row: 'front' },
-  // 后排 (靠右边, x 较大)
-  { x: 0.86, y: 0.34, row: 'back' },
-  { x: 0.88, y: 0.50, row: 'back' },
-  { x: 0.86, y: 0.66, row: 'back' },
+  { x: 0.70, y: 0.40, row: 'front' },
+  { x: 0.72, y: 0.56, row: 'front' },
+  { x: 0.84, y: 0.33, row: 'back' },
+  { x: 0.86, y: 0.48, row: 'back' },
+  { x: 0.84, y: 0.63, row: 'back' },
 ];
 
 const GW = 1280, GH = 720;
-// HiDPI: 渲染分辨率 = 逻辑尺寸 × devicePixelRatio
-const DPR = Math.min(Math.ceil(window.devicePixelRatio || 1), 3);
+// HiDPI: 确保 2K+ 显示器上清晰渲染
+// Windows 2K 屏幕 devicePixelRatio 常为1，但实际需要2倍渲染
+const screenDPR = window.devicePixelRatio || 1;
+const screenScale = Math.max(window.screen.width / GW, window.screen.height / GH);
+const DPR = Math.min(Math.max(2, Math.ceil(screenDPR), Math.ceil(screenScale)), 4);
 const RW = GW * DPR, RH = GH * DPR;
 
 // ─── Battle Scene ───
@@ -964,7 +965,7 @@ const config = {
   backgroundColor: '#080a18',
   scene: [BattleScene],
   scale: { mode: Phaser.Scale.NONE },
-  render: { antialias: true },
+  render: { antialias: true, roundPixels: false, pixelArt: false },
 };
 
 const game = new Phaser.Game(config);
