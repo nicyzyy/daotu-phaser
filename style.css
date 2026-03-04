@@ -1,6 +1,5 @@
 /* ═══════════════════════════════════════════
-   道途 V3 — 素材集成版
-   使用 OpenAI gpt-image-1 生成的仙侠 UI 素材
+   道途 V4 — 高品质仙侠 UI (OpenAI 全新素材)
    ═══════════════════════════════════════════ */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -23,7 +22,6 @@ body {
   top: 0; left: 0;
   width: 1280px; height: 720px;
 }
-/* Canvas renders at RW×RH but displays at 1280×720 = crisp HiDPI */
 #game-container canvas {
   width: 1280px !important;
   height: 720px !important;
@@ -37,29 +35,30 @@ body {
 }
 #ui-overlay > * { pointer-events: auto; }
 
-/* ═══ ATB Bar — 使用 atb_bar_bg.png ═══ */
+/* ═══ ATB Bar ═══ */
 #atb-bar {
   position: absolute;
   top: 0; left: 0;
   width: 1280px; height: 58px;
-  background: url('assets/ui/atb_bar_bg.png') center / cover no-repeat;
-  /* 在素材上叠加半透明渐变增强可读性 */
-  box-shadow: inset 0 -2px 0 rgba(201,168,76,0.3);
+  background: url('assets/ui/atb.png') center / 1280px 58px no-repeat;
+  overflow: visible;
 }
 #atb-track {
   position: absolute;
   top: 27px; left: 50px; right: 50px;
-  height: 4px;
-  background: url('assets/ui/atb_track.png') center / 100% 100% no-repeat;
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,168,76,0.5) 20%, rgba(201,168,76,0.7) 50%,
+    rgba(201,168,76,0.5) 80%, transparent);
 }
 #atb-ready-line {
   position: absolute;
   right: 50px; top: 6px;
-  width: 4px; height: 46px;
-  background: url('assets/ui/atb_ready_line.png') center / contain no-repeat;
-  filter: drop-shadow(0 0 6px rgba(64,232,224,0.5));
+  width: 3px; height: 46px;
+  background: linear-gradient(180deg, #40e8e0, #20a0a0);
+  box-shadow: 0 0 10px rgba(64,232,224,0.6), 0 0 3px #40e8e0;
+  border-radius: 2px;
 }
-
 .atb-icon {
   position: absolute;
   width: 42px; height: 42px;
@@ -67,189 +66,184 @@ body {
   transition: left 0.12s ease-out;
 }
 .atb-icon-bg {
-  position: absolute; inset: 3px;
+  position: absolute; inset: 4px;
   border-radius: 3px;
   overflow: hidden;
-  background: rgba(4,5,10,0.5);
+  background: rgba(4,5,10,0.6);
 }
 .atb-icon-bg img { width: 100%; height: 100%; object-fit: cover; }
-
-/* 头像框使用素材 */
 .atb-icon-frame {
   position: absolute; inset: 0;
   background-size: contain;
   background-repeat: no-repeat;
+  background-position: center;
 }
-.atb-icon-frame.ally { background-image: url('assets/ui/portrait_frame_ally.png'); }
-.atb-icon-frame.enemy { background-image: url('assets/ui/portrait_frame_enemy.png'); }
-
+.atb-icon-frame.ally { background-image: url('assets/ui/portrait_ally.png'); }
+.atb-icon-frame.enemy { background-image: url('assets/ui/portrait_enemy.png'); }
 .atb-icon-accent {
   position: absolute;
   bottom: 0; left: 5px; right: 5px;
   height: 2px; border-radius: 1px;
 }
-.atb-icon-accent.ally { background: #40e8e0; box-shadow: 0 0 4px rgba(64,232,224,0.4); }
-.atb-icon-accent.enemy { background: #c83030; box-shadow: 0 0 4px rgba(200,48,48,0.4); }
-.atb-icon.dead { opacity: 0.12; }
+.atb-icon-accent.ally { background: #40e8e0; box-shadow: 0 0 6px rgba(64,232,224,0.5); }
+.atb-icon-accent.enemy { background: #c83030; box-shadow: 0 0 6px rgba(200,48,48,0.5); }
+.atb-icon.dead { opacity: 0.1; filter: grayscale(1); }
 
-/* ═══ Battle Log — 使用 log_panel.png ═══ */
+/* ═══ Battle Log ═══ */
 #battle-log {
   position: absolute;
   top: 66px; left: 12px;
-  width: 230px; height: 170px;
-  background: url('assets/ui/log_panel.png') center / 100% 100% no-repeat;
-  padding: 12px 14px;
+  width: 230px;
+  max-height: 155px;
+  background: rgba(4,8,20,0.82);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 6px;
+  padding: 8px 10px;
   overflow-y: auto;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
 }
 #battle-log::-webkit-scrollbar { width: 3px; }
 #battle-log::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.3); border-radius: 2px; }
-
-#log-content { font-size: 11px; line-height: 1.5; color: rgba(210,220,235,0.9); }
+#log-content { font-size: 11px; line-height: 1.5; color: rgba(210,220,235,0.88); }
 .log-line { animation: logIn 0.25s ease-out; }
-.log-line.kill { color: #ff5050; font-weight: bold; }
-.log-line.heal { color: #50ffd0; }
-.log-line.skill { color: #ffd060; }
-.log-line.system { color: rgba(160,170,190,0.65); font-style: italic; }
-@keyframes logIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+.log-line.kill { color: #ff4040; font-weight: bold; text-shadow: 0 0 4px rgba(255,60,60,0.3); }
+.log-line.heal { color: #40ffcc; text-shadow: 0 0 4px rgba(64,255,200,0.2); }
+.log-line.skill { color: #ffc840; text-shadow: 0 0 4px rgba(255,200,64,0.2); }
+.log-line.system { color: rgba(140,150,170,0.6); font-style: italic; }
+@keyframes logIn { from { opacity:0; transform:translateY(-5px); } to { opacity:1; } }
 
-/* ═══ Overhead HP Bars — 使用 overhead_ally/enemy.png ═══ */
+/* ═══ Overhead HP ═══ */
 #overhead-bars { position: absolute; inset: 0; pointer-events: none; }
-
 .oh-bar {
   position: absolute;
-  padding: 3px 6px;
   background-size: 100% 100%;
   background-repeat: no-repeat;
+  padding: 4px 8px;
 }
 .oh-bar.oh-ally {
-  width: 110px;
-  background-image: url('assets/ui/overhead_ally.png');
+  width: 120px;
+  background-image: url('assets/ui/hp_ally.png');
+  padding: 4px 10px;
 }
 .oh-bar.oh-enemy {
-  width: 110px;
-  background-image: url('assets/ui/overhead_enemy.png');
+  width: 120px;
+  background-image: url('assets/ui/hp_enemy.png');
+  padding: 6px 10px 4px;
 }
-
 .oh-name {
   font-size: 10px; color: #ffd080;
   text-align: center;
   text-shadow: 0 1px 3px rgba(0,0,0,0.9);
   margin-bottom: 2px;
+  font-weight: bold;
 }
 .oh-track {
-  width: 100%; height: 7px;
-  background: url('assets/ui/bar_bg.png') center / 100% 100% no-repeat;
-  border-radius: 2px;
+  width: 100%; height: 6px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 3px;
   overflow: hidden;
 }
-.oh-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
+.oh-fill {
+  height: 100%; border-radius: 3px;
+  transition: width 0.3s ease;
+}
 .oh-fill.hp-ally {
-  background: url('assets/ui/bar_hp_green.png') left / auto 100% no-repeat;
-  background-color: #186838;
+  background: linear-gradient(180deg, #3ce860, #18a838);
+  box-shadow: 0 0 4px rgba(60,232,96,0.3);
 }
 .oh-fill.hp-enemy {
-  background: url('assets/ui/bar_hp_red.png') left / auto 100% no-repeat;
-  background-color: #681828;
+  background: linear-gradient(180deg, #e84040, #a01818);
+  box-shadow: 0 0 4px rgba(232,64,64,0.3);
 }
 .oh-fill.mp {
-  background: url('assets/ui/bar_mp_blue.png') left / auto 100% no-repeat;
-  background-color: #182860;
+  background: linear-gradient(180deg, #4080e8, #1840a0);
+  box-shadow: 0 0 4px rgba(64,128,232,0.3);
 }
 .oh-track-mp {
-  width: 80%; height: 5px;
-  background: url('assets/ui/bar_bg.png') center / 100% 100% no-repeat;
+  width: 85%; height: 4px;
+  background: rgba(0,0,0,0.4);
   border-radius: 2px;
   overflow: hidden;
   margin: 2px auto 0;
 }
-.oh-text { font-size: 8px; text-align: center; color: rgba(210,225,245,0.7); margin-top: 1px; }
+.oh-text {
+  font-size: 8px; text-align: center;
+  color: rgba(220,230,245,0.75);
+  margin-top: 1px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
 
-/* ═══ Action Panel — 使用 action_panel_bg.png ═══ */
+/* ═══ Action Panel ═══ */
 #action-panel {
   position: absolute;
-  bottom: 8px; left: 50%; transform: translateX(-50%);
-  width: 700px; min-height: 120px;
-  background: url('assets/ui/action_panel_bg.png') center / 100% 100% no-repeat;
-  /* 叠加半透明层增强文字可读性 */
-  box-shadow: inset 0 0 60px rgba(6,10,30,0.4);
-  border-radius: 8px;
-  padding: 14px 18px;
+  bottom: 6px; left: 50%; transform: translateX(-50%);
+  width: 720px;
+  background: url('assets/ui/action.png') center / 100% 100% no-repeat;
+  padding: 16px 22px 14px;
   animation: slideUp 0.18s ease-out;
 }
 @keyframes slideUp {
-  from { opacity:0; transform:translateX(-50%) translateY(16px); }
+  from { opacity:0; transform:translateX(-50%) translateY(12px); }
   to { opacity:1; transform:translateX(-50%) translateY(0); }
 }
-
 .panel-header {
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 8px; padding-bottom: 6px;
-  border-bottom: 1px solid rgba(201,168,76,0.25);
+  border-bottom: 1px solid rgba(201,168,76,0.2);
 }
-
-/* 行动面板头像用素材框 */
 #action-portrait {
-  width: 40px; height: 40px;
+  width: 38px; height: 38px;
   border-radius: 3px;
   object-fit: cover;
-  /* 头像框效果 */
-  outline: 2px solid transparent;
-  outline-offset: -2px;
-  background: rgba(4,5,10,0.5);
+  border: 2px solid rgba(64,232,224,0.5);
 }
-.portrait-wrap {
-  position: relative;
-  width: 44px; height: 44px;
-}
-.portrait-wrap img { position: absolute; inset: 2px; width: 40px; height: 40px; object-fit: cover; border-radius: 2px; }
-.portrait-wrap::after {
-  content: '';
-  position: absolute; inset: 0;
-  background: url('assets/ui/portrait_frame_ally.png') center / contain no-repeat;
-}
-
 #action-unit-name {
   font-size: 15px; color: #c9a84c;
-  text-shadow: 0 0 10px rgba(201,168,76,0.25);
+  text-shadow: 0 0 8px rgba(201,168,76,0.25);
+  font-weight: bold;
 }
-#action-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+#action-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
 
-/* ═══ Buttons — 使用 btn_*.png 四态 ═══ */
+/* ═══ Skill Buttons ═══ */
 .btn-xianxia {
-  background: url('assets/ui/btn_normal.png') center / 100% 100% no-repeat;
+  background: url('assets/ui/btn.png') center / 100% 100% no-repeat;
   border: none;
   border-radius: 4px;
   color: #e8dcc0;
   font-family: inherit; font-size: 11px;
-  padding: 8px 6px;
+  padding: 9px 6px;
   cursor: pointer; text-align: center; line-height: 1.35;
-  transition: all 0.1s;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  transition: all 0.12s;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
 }
 .btn-xianxia:hover {
-  background-image: url('assets/ui/btn_hover.png');
+  filter: brightness(1.2) saturate(1.1);
   transform: translateY(-1px);
-  filter: brightness(1.1);
+  box-shadow: 0 2px 12px rgba(201,168,76,0.25);
 }
 .btn-xianxia:active {
-  background-image: url('assets/ui/btn_pressed.png');
+  filter: brightness(0.85);
   transform: translateY(0);
 }
 .btn-xianxia:disabled {
-  background-image: url('assets/ui/btn_disabled.png');
-  color: rgba(100,100,110,0.45);
-  cursor: not-allowed; transform: none; filter: none;
+  filter: grayscale(0.8) brightness(0.5);
+  color: rgba(100,100,110,0.4);
+  cursor: not-allowed; transform: none; box-shadow: none;
 }
 .btn-name { font-size: 12px; font-weight: bold; color: #c9a84c; }
-.btn-stats { font-size: 9px; color: rgba(200,205,215,0.65); margin-top: 1px; }
+.btn-stats { font-size: 9px; color: rgba(200,205,215,0.65); margin-top: 2px; }
 .btn-desc { font-size: 9px; color: rgba(150,160,170,0.5); margin-top: 1px; }
 
-/* ═══ Target Panel — 使用 target_panel.png ═══ */
+/* ═══ Target Panel ═══ */
 #target-panel {
   position: absolute;
   bottom: 10px; left: 50%; transform: translateX(-50%);
   width: 300px;
-  background: url('assets/ui/target_panel.png') center / 100% 100% no-repeat;
+  background: url('assets/ui/action.png') center / 100% 100% no-repeat;
   border-radius: 8px;
   padding: 14px 16px;
   animation: slideUp 0.18s ease-out;
@@ -258,38 +252,38 @@ body {
   font-size: 13px; color: #c9a84c; text-align: center;
   margin-bottom: 8px; padding-bottom: 5px;
   border-bottom: 1px solid rgba(201,168,76,0.2);
+  font-weight: bold;
 }
 #target-buttons { display: flex; flex-direction: column; gap: 5px; }
 .btn-target {
-  background: url('assets/ui/btn_normal.png') center / 100% 100% no-repeat;
-  border: none;
-  border-radius: 4px;
+  background: url('assets/ui/btn.png') center / 100% 100% no-repeat;
+  border: none; border-radius: 4px;
   color: #e8dcc0; font-family: inherit; font-size: 12px;
-  padding: 8px 10px; cursor: pointer; text-align: left;
-  transition: all 0.1s;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  padding: 9px 12px; cursor: pointer; text-align: left;
+  transition: all 0.12s;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
 }
 .btn-target:hover {
-  background-image: url('assets/ui/btn_hover.png');
-  filter: brightness(1.1) hue-rotate(-20deg);
+  filter: brightness(1.15) hue-rotate(-15deg);
+  box-shadow: 0 0 8px rgba(200,48,48,0.25);
 }
 .btn-cancel {
   margin-top: 6px; width: 100%;
-  background: url('assets/ui/btn_disabled.png') center / 100% 100% no-repeat;
+  filter: grayscale(0.6) brightness(0.6);
+  background: url('assets/ui/btn.png') center / 100% 100% no-repeat;
   border: none; border-radius: 4px;
   color: rgba(170,175,185,0.6);
   font-family: inherit; font-size: 11px;
   padding: 6px; cursor: pointer;
 }
 
-/* ═══ Result Panel — 使用 result_panel.png ═══ */
+/* ═══ Result Panel ═══ */
 #result-panel {
   position: absolute;
   top: 50%; left: 50%; transform: translate(-50%,-50%);
-  width: 420px; height: 300px;
-  background: url('assets/ui/result_panel.png') center / 100% 100% no-repeat;
-  border-radius: 10px;
-  padding: 40px 30px;
+  width: 420px; min-height: 280px;
+  background: url('assets/ui/result.png') center / 100% 100% no-repeat;
+  padding: 50px 40px 40px;
   text-align: center;
   animation: resultIn 0.35s ease-out;
 }
@@ -299,27 +293,30 @@ body {
 }
 #result-text {
   font-size: 26px; margin-bottom: 20px;
-  text-shadow: 0 0 18px currentColor;
+  text-shadow: 0 0 20px currentColor, 0 2px 4px rgba(0,0,0,0.5);
   white-space: pre-line;
 }
 .result-win { color: #ffd84a; }
-.result-lose { color: #ff5050; }
+.result-lose { color: #ff4040; }
 #result-btn { font-size: 15px; padding: 10px 36px; margin-top: 10px; }
 
 /* ═══ Damage Float ═══ */
 .dmg-float {
-  position: absolute; font-size: 20px; font-weight: bold;
+  position: absolute; font-size: 22px; font-weight: bold;
   color: #ffd84a;
-  text-shadow: 0 2px 3px rgba(0,0,0,0.8), 0 0 6px rgba(200,48,48,0.35);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(255,200,40,0.4);
   pointer-events: none;
   animation: dmgUp 1s ease-out forwards;
   z-index: 20;
 }
-.dmg-float.heal { color: #50ffd0; text-shadow: 0 2px 3px rgba(0,0,0,0.8), 0 0 6px rgba(64,232,224,0.35); }
+.dmg-float.heal {
+  color: #40ffd0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(64,255,200,0.4);
+}
 @keyframes dmgUp {
-  0% { opacity:1; transform:translateY(0) scale(1.15); }
+  0% { opacity:1; transform:translateY(0) scale(1.2); }
   50% { opacity:1; transform:translateY(-35px) scale(1); }
-  100% { opacity:0; transform:translateY(-60px) scale(0.85); }
+  100% { opacity:0; transform:translateY(-65px) scale(0.8); }
 }
 
 .hidden { display: none !important; }
