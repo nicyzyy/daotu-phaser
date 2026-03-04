@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   道途 — Phaser 3 ATB 战斗系统 V2 (全面修复版)
+   道途 — Phaser 3 ATB 战斗系统 V3 (增强动画版)
    ═══════════════════════════════════════════════════════ */
 
 // ─── Data Classes ───
@@ -214,91 +214,329 @@ class BattleScene extends Phaser.Scene {
     this._idleAnim(name);
   }
 
-  // ─── Animations ───
+  // ─── Enhanced Animations V3 ───
+
+  // 📸 Screen shake
+  _shake(intensity = 6, dur = 150) {
+    this.cameras.main.shake(dur, intensity / 1000);
+  }
+
+  // ⚡ Flash overlay
+  _flash(color = 0xffffff, dur = 80) {
+    this.cameras.main.flash(dur, (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff, true);
+  }
+
+  // ─── ATTACK (melee) ───
   _animAttack(atk, tgt) {
     const sp = this.sprites[atk], bp = this.basePos[atk], tbp = this.basePos[tgt];
     if (!sp) return;
     this.tweens.killTweensOf(sp);
     this._pose(atk, 'attack');
-    const midX = bp.x + (tbp.x - bp.x) * 0.35;
-    this.tweens.add({
-      targets: sp, x: midX, duration: 180, ease: 'Quad.easeOut',
-      onComplete: () => {
-        this._fxSlash(tgt);
-        this._animHit(tgt);
-        this.tweens.add({ targets: sp, x: bp.x, duration: 280, ease: 'Quad.easeIn', onComplete: () => this._resetIdle(atk) });
-      }
+
+    // Wind-up: slight pullback + squeeze
+    const dir = tbp.x > bp.x ? 1 : -1;
+    const sc = sp.getData('sc');
+    this.tweens.chain({
+      targets: sp,
+      tweens: [
+        // 1) Pull back & squeeze
+        { x: bp.x - dir * 15 * DPR, scaleX: sc * 0.92, scaleY: sc * 1.06, duration: 100, ease: 'Quad.easeOut' },
+        // 2) Dash forward (close to target)
+        { x: tbp.x - dir * 60 * DPR, scaleX: sc * 1.08, scaleY: sc * 0.95, duration: 120, ease: 'Back.easeIn',
+          onComplete: () => {
+            this._fxSlash(tgt);
+            this._fxImpactBurst(tgt);
+            this._animHit(tgt);
+            this._shake(8, 120);
+            this._flash(0xffffff, 60);
+          }
+        },
+        // 3) Overshoot slightly
+        { x: tbp.x - dir * 80 * DPR, duration: 60, ease: 'Quad.easeOut' },
+        // 4) Return to base
+        { x: bp.x, scaleX: sc, scaleY: sc, duration: 300, ease: 'Cubic.easeOut',
+          onComplete: () => this._resetIdle(atk)
+        },
+      ]
     });
   }
 
+  // ⚔️ Enhanced slash FX: multiple slash arcs + sparks
   _fxSlash(tgt) {
     const sp = this.sprites[tgt];
     if (!sp) return;
-    for (let i = 0; i < 3; i++) {
-      const s = this.add.rectangle(sp.x - 20 + i * 12, sp.y - 60 - i * 18, 45, 3, 0xffff80, 0.9).setAngle(-20 + i * 15).setDepth(999);
-      this.tweens.add({ targets: s, alpha: 0, scaleX: 2.5, duration: 250, onComplete: () => s.destroy() });
+    const cx = sp.x, cy = sp.y - 30 * DPR;
+
+    // Main slash arcs (cyan sword energy)
+    for (let i = 0; i < 5; i++) {
+      const w = (35 + i * 8) * DPR, h = 2 * DPR;
+      const s = this.add.rectangle(cx - 10 * DPR + i * 8 * DPR, cy - i * 14 * DPR, w, h, 0x60ddff, 0.9)
+        .setAngle(-25 + i * 12).setDepth(999);
+      this.tweens.add({ targets: s, alpha: 0, scaleX: 2.8, scaleY: 0.3, duration: 200 + i * 30,
+        ease: 'Quad.easeOut', onComplete: () => s.destroy() });
+    }
+
+    // Sparks
+    for (let i = 0; i < 10; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const speed = 20 + Math.random() * 40;
+      const sz = (1.5 + Math.random() * 2.5) * DPR;
+      const colors = [0xffff80, 0x80ddff, 0xffffff, 0x60eeff];
+      const c = colors[Math.floor(Math.random() * colors.length)];
+      const p = this.add.rectangle(cx, cy, sz, sz, c, 1).setDepth(999);
+      this.tweens.add({
+        targets: p,
+        x: p.x + Math.cos(a) * speed * DPR,
+        y: p.y + Math.sin(a) * speed * DPR,
+        alpha: 0, scaleX: 0.2, scaleY: 0.2,
+        duration: 250 + Math.random() * 200,
+        onComplete: () => p.destroy()
+      });
     }
   }
 
+  // 💥 Impact burst at target
+  _fxImpactBurst(tgt) {
+    const sp = this.sprites[tgt];
+    if (!sp) return;
+    const cx = sp.x, cy = sp.y;
+
+    // Expanding ring
+    const ring = this.add.circle(cx, cy, 5 * DPR, 0xffffff, 0.7).setDepth(998);
+    ring.setStrokeStyle(2 * DPR, 0xffdd44);
+    this.tweens.add({
+      targets: ring, scaleX: 4, scaleY: 4, alpha: 0, duration: 300,
+      ease: 'Quad.easeOut', onComplete: () => ring.destroy()
+    });
+  }
+
+  // ─── HIT reaction ───
   _animHit(tgt) {
     const sp = this.sprites[tgt], bp = this.basePos[tgt];
     if (!sp) return;
     this.tweens.killTweensOf(sp);
     this._pose(tgt, 'hit');
     sp.setTint(0xff3333);
-    this.tweens.add({ targets: sp, x: [bp.x + 12, bp.x - 12, bp.x + 6, bp.x], duration: 160 });
-    this.time.delayedCall(200, () => { sp.clearTint(); });
-    this.time.delayedCall(500, () => this._resetIdle(tgt));
+
+    const sc = sp.getData('sc');
+    // Violent shake + knockback
+    this.tweens.chain({
+      targets: sp,
+      tweens: [
+        { x: bp.x + 18 * DPR, scaleX: sc * 1.1, scaleY: sc * 0.92, duration: 40 },
+        { x: bp.x - 14 * DPR, scaleX: sc * 0.95, scaleY: sc * 1.05, duration: 40 },
+        { x: bp.x + 8 * DPR, duration: 40 },
+        { x: bp.x - 4 * DPR, duration: 40 },
+        { x: bp.x, scaleX: sc, scaleY: sc, duration: 60,
+          onComplete: () => {
+            sp.clearTint();
+            this.time.delayedCall(300, () => this._resetIdle(tgt));
+          }
+        },
+      ]
+    });
   }
 
+  // ─── DEFEAT ───
   _animDefeat(name) {
     const sp = this.sprites[name];
     if (!sp) return;
     this.tweens.killTweensOf(sp);
     this._pose(name, 'defeated');
     sp.setTint(0xff4444);
-    this.tweens.add({
-      targets: sp, alpha: 0, y: sp.y + 40, duration: 1000, ease: 'Quad.easeIn',
-      onComplete: () => { sp.setVisible(false); UI.hideOverhead(name); }
+
+    // Dramatic: slow fall + scale squeeze + fade
+    const sc = sp.getData('sc');
+    this.tweens.chain({
+      targets: sp,
+      tweens: [
+        // Flash red
+        { alpha: 0.4, duration: 100, yoyo: true, repeat: 2 },
+        // Collapse
+        { y: sp.y + 50 * DPR, scaleX: sc * 1.15, scaleY: sc * 0.7, alpha: 0.6, angle: Phaser.Math.Between(-8, 8),
+          duration: 600, ease: 'Bounce.easeOut' },
+        // Fade out
+        { alpha: 0, duration: 500, ease: 'Quad.easeIn',
+          onComplete: () => { sp.setVisible(false); UI.hideOverhead(name); }
+        },
+      ]
+    });
+
+    // Death particles (soul wisps)
+    this.time.delayedCall(300, () => {
+      for (let i = 0; i < 12; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sz = (2 + Math.random() * 3) * DPR;
+        const colors = [0x8844cc, 0xaa66ee, 0x6633aa, 0xcc88ff];
+        const p = this.add.circle(sp.x + Phaser.Math.Between(-20, 20) * DPR,
+          sp.y + Phaser.Math.Between(-10, 20) * DPR, sz, colors[i % 4], 0.8).setDepth(999);
+        this.tweens.add({
+          targets: p,
+          x: p.x + Math.cos(a) * 50 * DPR,
+          y: p.y - 40 * DPR + Math.sin(a) * 30 * DPR,
+          alpha: 0, scaleX: 0.1, scaleY: 0.1,
+          duration: 800 + Math.random() * 400,
+          ease: 'Quad.easeOut',
+          onComplete: () => p.destroy()
+        });
+      }
     });
   }
 
+  // ─── CAST (magical / skill) ───
   _animCast(caster, tgt) {
-    const sp = this.sprites[caster];
+    const sp = this.sprites[caster], bp = this.basePos[caster];
     if (!sp) return;
     this.tweens.killTweensOf(sp);
     this._pose(caster, 'cast');
+
+    const sc = sp.getData('sc');
+    // Charge-up: glow + scale pulse
     sp.setTint(0xddbbff);
-    this.time.delayedCall(250, () => {
-      this._fxFire(tgt);
-      this._animHit(tgt);
+    this.tweens.add({
+      targets: sp, scaleX: sc * 1.08, scaleY: sc * 1.08, duration: 200, yoyo: true, ease: 'Sine.easeInOut',
+    });
+
+    // Charging particles around caster
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const r = 40 * DPR;
+      const p = this.add.circle(
+        sp.x + Math.cos(a) * r, sp.y + Math.sin(a) * r,
+        2.5 * DPR, 0xbbaaff, 0.9
+      ).setDepth(999);
+      this.tweens.add({
+        targets: p, x: sp.x, y: sp.y - 20 * DPR, alpha: 0,
+        duration: 300 + i * 40, ease: 'Quad.easeIn',
+        onComplete: () => p.destroy()
+      });
+    }
+
+    // Release: projectile or burst at target
+    this.time.delayedCall(350, () => {
+      this._fxMagicProjectile(sp.x, sp.y, this.sprites[tgt]);
+      this.time.delayedCall(250, () => {
+        this._fxFireExplosion(tgt);
+        this._animHit(tgt);
+        this._shake(6, 100);
+      });
       sp.clearTint();
-      this.time.delayedCall(400, () => this._resetIdle(caster));
+      this.time.delayedCall(600, () => this._resetIdle(caster));
     });
   }
 
+  // 🔥 Magic projectile: energy ball flying from caster to target
+  _fxMagicProjectile(fromX, fromY, targetSp) {
+    if (!targetSp) return;
+    const ball = this.add.circle(fromX, fromY - 20 * DPR, 6 * DPR, 0xff6600, 1).setDepth(999);
+    const glow = this.add.circle(fromX, fromY - 20 * DPR, 12 * DPR, 0xff8833, 0.3).setDepth(998);
+
+    // Trail particles
+    const trail = this.time.addEvent({
+      delay: 30, repeat: 8,
+      callback: () => {
+        const t = this.add.circle(ball.x, ball.y, (2 + Math.random() * 3) * DPR, 0xff9944, 0.6).setDepth(997);
+        this.tweens.add({ targets: t, alpha: 0, scaleX: 0.1, scaleY: 0.1, duration: 200, onComplete: () => t.destroy() });
+      }
+    });
+
+    this.tweens.add({
+      targets: [ball, glow],
+      x: targetSp.x, y: targetSp.y - 20 * DPR,
+      duration: 250, ease: 'Quad.easeIn',
+      onComplete: () => { ball.destroy(); glow.destroy(); trail.remove(); }
+    });
+  }
+
+  // 🔥 Enhanced fire explosion
+  _fxFireExplosion(tgt) {
+    const sp = this.sprites[tgt];
+    if (!sp) return;
+    const cx = sp.x, cy = sp.y;
+
+    // Central flash
+    const flash = this.add.circle(cx, cy, 8 * DPR, 0xffaa00, 0.9).setDepth(999);
+    this.tweens.add({ targets: flash, scaleX: 5, scaleY: 5, alpha: 0, duration: 300, onComplete: () => flash.destroy() });
+
+    // Fire particles (outward burst)
+    for (let i = 0; i < 14; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const speed = 25 + Math.random() * 45;
+      const sz = (2 + Math.random() * 4) * DPR;
+      const colors = [0xff4400, 0xff6600, 0xff8800, 0xffaa00, 0xffcc33];
+      const c = colors[Math.floor(Math.random() * colors.length)];
+      const p = this.add.circle(cx, cy, sz, c, 0.9).setDepth(999);
+      this.tweens.add({
+        targets: p,
+        x: cx + Math.cos(a) * speed * DPR,
+        y: cy + Math.sin(a) * speed * DPR - 15 * DPR, // drift upward
+        alpha: 0, scaleX: 0.2, scaleY: 0.2,
+        duration: 350 + Math.random() * 250,
+        ease: 'Quad.easeOut',
+        onComplete: () => p.destroy()
+      });
+    }
+
+    // Smoke wisps
+    for (let i = 0; i < 5; i++) {
+      const s = this.add.circle(cx + Phaser.Math.Between(-15, 15) * DPR, cy, (4 + Math.random() * 6) * DPR, 0x333333, 0.4).setDepth(997);
+      this.tweens.add({
+        targets: s, y: s.y - (50 + Math.random() * 30) * DPR, alpha: 0, scaleX: 2, scaleY: 2,
+        duration: 600 + Math.random() * 300, ease: 'Quad.easeOut',
+        onComplete: () => s.destroy()
+      });
+    }
+  }
+
+  // ─── HEAL ───
   _animHeal(name) {
     const sp = this.sprites[name];
     if (!sp) return;
     this.tweens.killTweensOf(sp);
     this._pose(name, 'cast');
-    for (let i = 0; i < 6; i++) {
-      const p = this.add.rectangle(sp.x + Phaser.Math.Between(-18, 18), sp.y + Phaser.Math.Between(-5, 15), 4, 4, 0x40ff60, 0.8).setDepth(999);
-      this.tweens.add({ targets: p, y: p.y - 70, alpha: 0, duration: 700 + Math.random() * 300, onComplete: () => p.destroy() });
-    }
-    sp.setTint(0x80ff80);
-    this.time.delayedCall(500, () => { sp.clearTint(); this._resetIdle(name); });
-  }
 
-  _fxFire(tgt) {
-    const sp = this.sprites[tgt];
-    if (!sp) return;
-    for (let i = 0; i < 6; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const c = Phaser.Display.Color.GetColor(255, 100 + Math.random() * 100, 25);
-      const p = this.add.rectangle(sp.x + Math.cos(a) * 10, sp.y - 35 + Math.sin(a) * 10, 5, 5, c, 0.9).setDepth(999);
-      this.tweens.add({ targets: p, x: p.x + Math.cos(a) * 35, y: p.y + Math.sin(a) * 35, alpha: 0, duration: 350, onComplete: () => p.destroy() });
+    const sc = sp.getData('sc');
+
+    // Green glow pulse
+    sp.setTint(0x44ff66);
+    this.tweens.add({ targets: sp, scaleX: sc * 1.05, scaleY: sc * 1.05, duration: 300, yoyo: true, ease: 'Sine.easeInOut' });
+
+    // Heal rune circle (rotating ring of particles)
+    const cx = sp.x, cy = sp.y + 20 * DPR;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const r = 30 * DPR;
+      const p = this.add.circle(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.4, 2.5 * DPR, 0x66ff88, 0.8).setDepth(999);
+      this.tweens.add({
+        targets: p,
+        x: cx + Math.cos(a + Math.PI) * r,
+        y: cy + Math.sin(a + Math.PI) * r * 0.4,
+        alpha: 0, duration: 600 + i * 50,
+        onComplete: () => p.destroy()
+      });
     }
+
+    // Rising heal particles (leaves / sparkles)
+    for (let i = 0; i < 15; i++) {
+      const delay = i * 50;
+      this.time.delayedCall(delay, () => {
+        const px = sp.x + Phaser.Math.Between(-25, 25) * DPR;
+        const py = sp.y + Phaser.Math.Between(-10, 20) * DPR;
+        const colors = [0x40ff60, 0x80ffaa, 0xaaffcc, 0xeeffcc];
+        const sz = (2 + Math.random() * 3) * DPR;
+        const p = this.add.circle(px, py, sz, colors[i % 4], 0.9).setDepth(999);
+        this.tweens.add({
+          targets: p,
+          y: py - (50 + Math.random() * 40) * DPR,
+          x: px + Phaser.Math.Between(-10, 10) * DPR,
+          alpha: 0, duration: 600 + Math.random() * 300,
+          ease: 'Quad.easeOut',
+          onComplete: () => p.destroy()
+        });
+      });
+    }
+
+    this.time.delayedCall(700, () => { sp.clearTint(); this._resetIdle(name); });
   }
 
   // ─── ATB Bar ───
