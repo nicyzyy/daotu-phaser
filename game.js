@@ -45,12 +45,17 @@ class BattleUnit {
 // ─── Config ───
 const SPRITE_MAP = {
   '剑修·云逸': 'yunyi', '丹修·灵溪': 'lingxi',
+  '琴修·凤鸣': 'fengming', '暗修·墨夜': 'moye', '医修·紫萱': 'zixuan',
   '妖狼': 'wolf', '毒蛇精': 'snake', '石魔': 'golem',
+  '九尾妖狐': 'yaohu', '幽冥鬼王': 'guiwang',
 };
 
 const SKILL_ICONS = {
   '御剑术': '⚔️', '万剑归宗': '🗡️', '聚灵诀': '💠',
   '灵火术': '🔥', '天火焚原': '🌋', '回春术': '🌿',
+  '破音弦': '🎵', '天籁灭魂曲': '🎶', '乐愈术': '🎼',
+  '暗影刺': '🗡️', '千影噬杀': '👤', '隐遁术': '💨',
+  '灵草术': '🌱', '万灵回春': '🌸', '净化术': '✨',
 };
 
 // ─── 纵列站位系统 ───
@@ -246,11 +251,37 @@ class BattleScene extends Phaser.Scene {
           new SkillData('回春术', '恢复自身生命', 18, 40, 'self', 'heal'),
         ]
       }),
+      new BattleUnit('琴修·凤鸣', true, {
+        hp: 85, mp: 110, attack: 8, defense: 5, agility: 60, spirit: 28, realm: '炼气期八层',
+        skills: [
+          new SkillData('破音弦', '音波攻击单体', 12, 28, 'single', 'magical'),
+          new SkillData('天籁灭魂曲', '音律攻击全体', 28, 18, 'all', 'magical'),
+          new SkillData('乐愈术', '琴音治愈单体', 20, 35, 'single_ally', 'heal'),
+        ]
+      }),
+      new BattleUnit('暗修·墨夜', true, {
+        hp: 95, mp: 50, attack: 28, defense: 4, agility: 95, spirit: 8, realm: '炼气期九层',
+        skills: [
+          new SkillData('暗影刺', '暗影穿刺单体', 8, 35, 'single', 'physical'),
+          new SkillData('千影噬杀', '暗影群攻', 20, 22, 'all', 'physical'),
+          new SkillData('隐遁术', '消隐回避一回合', 10, 0, 'self', 'buff'),
+        ]
+      }),
+      new BattleUnit('医修·紫萱', true, {
+        hp: 100, mp: 120, attack: 6, defense: 7, agility: 45, spirit: 30, realm: '炼气期六层',
+        skills: [
+          new SkillData('灵草术', '灵草治愈单体', 10, 40, 'single_ally', 'heal'),
+          new SkillData('万灵回春', '全体回复', 35, 25, 'all_ally', 'heal'),
+          new SkillData('净化术', '净化异常状态', 15, 0, 'single_ally', 'buff'),
+        ]
+      }),
     ];
     this.enemyUnits = [
       new BattleUnit('妖狼', false, { hp: 80, mp: 20, attack: 15, defense: 5, agility: 65, spirit: 5 }),
       new BattleUnit('毒蛇精', false, { hp: 60, mp: 30, attack: 18, defense: 3, agility: 80, spirit: 12 }),
       new BattleUnit('石魔', false, { hp: 150, mp: 10, attack: 22, defense: 15, agility: 30, spirit: 3 }),
+      new BattleUnit('九尾妖狐', false, { hp: 110, mp: 60, attack: 20, defense: 6, agility: 85, spirit: 22 }),
+      new BattleUnit('幽冥鬼王', false, { hp: 200, mp: 40, attack: 25, defense: 18, agility: 40, spirit: 15 }),
     ];
     this.allUnits = [...this.playerUnits, ...this.enemyUnits];
     for (const u of this.allUnits) u.atb = Math.random() * 20 + u.agility * 0.3;
@@ -775,7 +806,9 @@ class BattleScene extends Phaser.Scene {
   _enemyAI(unit) {
     const alive = this.playerUnits.filter(u => !u.isDead);
     if (!alive.length) { this._checkEnd(); return; }
-    const tgt = Phaser.Utils.Array.GetRandom(alive);
+    // Smart targeting: prefer low HP targets
+    const sorted = [...alive].sort((a, b) => a.hp - b.hp);
+    const tgt = Math.random() < 0.6 ? sorted[0] : Phaser.Utils.Array.GetRandom(alive);
     this._doAttack(unit, tgt);
   }
 
@@ -801,18 +834,46 @@ class BattleScene extends Phaser.Scene {
     if (skill.damageType === 'physical') power += atk.attack;
     else if (skill.damageType === 'magical') power += atk.spirit * 2;
 
+    // ─── Heal skills ───
     if (skill.damageType === 'heal') {
       const amt = power + atk.spirit;
-      tgt.hp = Math.min(tgt.maxHp, tgt.hp + amt);
-      UI.log(`[灵] ${atk.name} 使用 ${skill.name}，恢复 ${amt} 生命！`, 'heal');
+      if (skill.targetType === 'all_ally') {
+        // 全体治愈
+        const allies = this.playerUnits.filter(u => !u.isDead);
+        for (const a of allies) {
+          a.hp = Math.min(a.maxHp, a.hp + amt);
+          UI.floatDmg(this, a.name, amt, true);
+        }
+        UI.log(`[灵] ${atk.name} 使用 ${skill.name}，全体恢复 ${amt} 生命！`, 'heal');
+      } else if (skill.targetType === 'single_ally') {
+        // 单体治愈指定友军
+        tgt.hp = Math.min(tgt.maxHp, tgt.hp + amt);
+        UI.log(`[灵] ${atk.name} 使用 ${skill.name}，${tgt.name} 恢复 ${amt} 生命！`, 'heal');
+        UI.floatDmg(this, tgt.name, amt, true);
+      } else {
+        // self heal
+        atk.hp = Math.min(atk.maxHp, atk.hp + amt);
+        UI.log(`[灵] ${atk.name} 使用 ${skill.name}，恢复 ${amt} 生命！`, 'heal');
+        UI.floatDmg(this, atk.name, amt, true);
+      }
       this._animHeal(atk.name);
-      UI.floatDmg(this, atk.name, amt, true);
       this._refreshHP();
       this.isWaiting = false;
       this.currentUnit = null;
       return;
     }
 
+    // ─── Buff skills ───
+    if (skill.damageType === 'buff') {
+      UI.log(`[灵] ${atk.name} 使用 ${skill.name}！`, 'skill');
+      this._animHeal(atk.name); // Use heal animation for buffs
+      this._refreshHP();
+      this.isWaiting = false;
+      this.currentUnit = null;
+      return;
+    }
+
+    // ─── Damage skills ───
     const targets = skill.targetType === 'all'
       ? (atk.isPlayer ? this.enemyUnits : this.playerUnits).filter(u => !u.isDead)
       : [tgt];
@@ -904,6 +965,8 @@ const UI = {
         scene.selectedSkill = sk;
         if (sk.targetType === 'self') { panel.classList.add('hidden'); scene._doSkill(unit, sk, unit); }
         else if (sk.targetType === 'all') { panel.classList.add('hidden'); const es = scene.enemyUnits.filter(u => !u.isDead); if (es.length) scene._doSkill(unit, sk, es[0]); }
+        else if (sk.targetType === 'all_ally') { panel.classList.add('hidden'); scene._doSkill(unit, sk, unit); }
+        else if (sk.targetType === 'single_ally') { panel.classList.add('hidden'); UI.showAllyTargets(scene); }
         else UI.showTargets(scene);
       };
       bc.appendChild(b);
@@ -924,6 +987,26 @@ const UI = {
         panel.classList.add('hidden');
         if (scene.selectedSkill) scene._doSkill(scene.currentUnit, scene.selectedSkill, e);
         else scene._doAttack(scene.currentUnit, e);
+      };
+      tc.appendChild(b);
+    }
+    panel.classList.remove('hidden');
+  },
+
+  showAllyTargets(scene) {
+    document.getElementById('action-panel').classList.add('hidden');
+    const panel = document.getElementById('target-panel');
+    const tc = document.getElementById('target-buttons');
+    tc.innerHTML = '';
+    document.querySelector('.panel-title').textContent = '选择友方目标';
+    for (const a of scene.playerUnits.filter(u => !u.isDead)) {
+      const b = document.createElement('button');
+      b.className = 'btn-target';
+      b.style.borderColor = 'rgba(64,232,96,0.4)';
+      b.textContent = `${a.name}  HP:${a.hp}/${a.maxHp}`;
+      b.onclick = () => {
+        panel.classList.add('hidden');
+        scene._doSkill(scene.currentUnit, scene.selectedSkill, a);
       };
       tc.appendChild(b);
     }
