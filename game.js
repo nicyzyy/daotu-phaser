@@ -44,8 +44,8 @@ class BattleUnit {
 
 // ─── Config ───
 const SPRITE_MAP = {
-  '剑修·云逸': 'yunyi', '丹修·灵溪': 'lingxi',
-  '琴修·凤鸣': 'fengming', '暗修·墨夜': 'moye', '医修·紫萱': 'zixuan',
+  '云逸': 'yunyi', '灵溪': 'lingxi',
+  '凤鸣': 'fengming', '墨夜': 'moye', '紫萱': 'zixuan',
   '妖狼': 'wolf', '毒蛇精': 'snake', '石魔': 'golem',
   '九尾妖狐': 'yaohu', '幽冥鬼王': 'guiwang',
 };
@@ -235,7 +235,7 @@ class BattleScene extends Phaser.Scene {
   // ─── Units ───
   _createUnits() {
     this.playerUnits = [
-      new BattleUnit('剑修·云逸', true, {
+      new BattleUnit('云逸', true, {
         hp: 120, mp: 60, attack: 20, defense: 8, agility: 75, spirit: 10, realm: '炼气期九层',
         skills: [
           new SkillData('御剑术', '剑气斩击单体', 10, 25, 'single', 'physical'),
@@ -243,7 +243,7 @@ class BattleScene extends Phaser.Scene {
           new SkillData('聚灵诀', '恢复自身生命', 15, 30, 'self', 'heal'),
         ]
       }),
-      new BattleUnit('丹修·灵溪', true, {
+      new BattleUnit('灵溪', true, {
         hp: 90, mp: 100, attack: 10, defense: 6, agility: 55, spirit: 25, realm: '炼气期七层',
         skills: [
           new SkillData('灵火术', '灵火灼烧单体', 12, 30, 'single', 'magical'),
@@ -251,7 +251,7 @@ class BattleScene extends Phaser.Scene {
           new SkillData('回春术', '恢复自身生命', 18, 40, 'self', 'heal'),
         ]
       }),
-      new BattleUnit('琴修·凤鸣', true, {
+      new BattleUnit('凤鸣', true, {
         hp: 85, mp: 110, attack: 8, defense: 5, agility: 60, spirit: 28, realm: '炼气期八层',
         skills: [
           new SkillData('破音弦', '音波攻击单体', 12, 28, 'single', 'magical'),
@@ -259,7 +259,7 @@ class BattleScene extends Phaser.Scene {
           new SkillData('乐愈术', '琴音治愈单体', 20, 35, 'single_ally', 'heal'),
         ]
       }),
-      new BattleUnit('暗修·墨夜', true, {
+      new BattleUnit('墨夜', true, {
         hp: 95, mp: 50, attack: 28, defense: 4, agility: 95, spirit: 8, realm: '炼气期九层',
         skills: [
           new SkillData('暗影刺', '暗影穿刺单体', 8, 35, 'single', 'physical'),
@@ -267,7 +267,7 @@ class BattleScene extends Phaser.Scene {
           new SkillData('隐遁术', '消隐回避一回合', 10, 0, 'self', 'buff'),
         ]
       }),
-      new BattleUnit('医修·紫萱', true, {
+      new BattleUnit('紫萱', true, {
         hp: 100, mp: 120, attack: 6, defense: 7, agility: 45, spirit: 30, realm: '炼气期六层',
         skills: [
           new SkillData('灵草术', '灵草治愈单体', 10, 40, 'single_ally', 'heal'),
