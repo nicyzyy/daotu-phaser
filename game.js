@@ -54,12 +54,13 @@ const SKILL_ICONS = {
 };
 
 // 布局: x/y 百分比基于 1280x720, h = 目标显示高度
+// y 是脚底位置 (origin 0.85), 调高 y 值让角色脚踩地面
 const LAYOUT = {
-  '剑修·云逸': { h: 210, x: 0.22, y: 0.50 },
-  '丹修·灵溪': { h: 190, x: 0.09, y: 0.56 },
-  '妖狼':     { h: 190, x: 0.60, y: 0.52 },
-  '毒蛇精':   { h: 180, x: 0.74, y: 0.50 },
-  '石魔':     { h: 220, x: 0.86, y: 0.47 },  // 从 0.90 调到 0.86
+  '剑修·云逸': { h: 200, x: 0.22, y: 0.72 },
+  '丹修·灵溪': { h: 180, x: 0.09, y: 0.75 },
+  '妖狼':     { h: 180, x: 0.60, y: 0.72 },
+  '毒蛇精':   { h: 170, x: 0.74, y: 0.72 },
+  '石魔':     { h: 210, x: 0.86, y: 0.70 },
 };
 
 const GW = 1280, GH = 720;
@@ -176,6 +177,8 @@ class BattleScene extends Phaser.Scene {
       const sp = this.add.image(RW * lay.x, RH * lay.y, `${folder}_idle_${dir}`);
       const texH = sp.texture.getSourceImage().height;
       const sc = (lay.h * DPR) / texH;
+      // Set origin to bottom-center so feet anchor at layout position
+      sp.setOrigin(0.5, 0.85);
       sp.setScale(sc).setDepth(Math.floor(RH * lay.y));
       sp.setData('folder', folder);
       sp.setData('dir', dir);
@@ -342,19 +345,26 @@ class BattleScene extends Phaser.Scene {
     const sp = this.sprites[name];
     if (!sp) return;
     this.tweens.killTweensOf(sp);
-    this._pose(name, 'defeated');
+    // Use the hit pose for defeat (more reliable direction), then fade
+    this._pose(name, 'hit');
     sp.setTint(0xff4444);
 
-    // Dramatic: slow fall + scale squeeze + fade
     const sc = sp.getData('sc');
+    const baseY = sp.y;
+
+    // Save current flipX state to ensure direction doesn't change
+    const savedFlipX = sp.flipX;
+
     this.tweens.chain({
       targets: sp,
       tweens: [
         // Flash red
         { alpha: 0.4, duration: 100, yoyo: true, repeat: 2 },
-        // Collapse
-        { y: sp.y + 50 * DPR, scaleX: sc * 1.15, scaleY: sc * 0.7, alpha: 0.6, angle: Phaser.Math.Between(-8, 8),
-          duration: 600, ease: 'Bounce.easeOut' },
+        // Collapse downward
+        { y: baseY + 40 * DPR, scaleY: sc * 0.7, alpha: 0.5,
+          duration: 600, ease: 'Bounce.easeOut',
+          onUpdate: () => { sp.flipX = savedFlipX; } // prevent direction change
+        },
         // Fade out
         { alpha: 0, duration: 500, ease: 'Quad.easeIn',
           onComplete: () => { sp.setVisible(false); UI.hideOverhead(name); }
@@ -364,7 +374,7 @@ class BattleScene extends Phaser.Scene {
 
     // Death particles (soul wisps)
     this.time.delayedCall(300, () => {
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < 10; i++) {
         const a = Math.random() * Math.PI * 2;
         const sz = (2 + Math.random() * 3) * DPR;
         const colors = [0x8844cc, 0xaa66ee, 0x6633aa, 0xcc88ff];
