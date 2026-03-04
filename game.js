@@ -45,7 +45,7 @@ class BattleUnit {
 // ─── Config ───
 const SPRITE_MAP = {
   '云逸': 'yunyi', '灵溪': 'lingxi',
-  '凤鸣': 'fengming', '霜凝': 'moye', '药仙': 'zixuan',
+  '飞月': 'fengming', '霜凝': 'moye', '药仙': 'zixuan',
   '妖狼': 'wolf', '毒蛇精': 'snake', '石魔': 'golem',
   '九尾妖狐': 'yaohu', '幽冥鬼王': 'guiwang',
 };
@@ -251,7 +251,7 @@ class BattleScene extends Phaser.Scene {
           new SkillData('回春术', '恢复自身生命', 18, 40, 'self', 'heal'),
         ]
       }),
-      new BattleUnit('凤鸣', true, {
+      new BattleUnit('飞月', true, {
         hp: 85, mp: 110, attack: 8, defense: 5, agility: 60, spirit: 28, realm: '炼气期八层',
         skills: [
           new SkillData('破音弦', '音波攻击单体', 12, 28, 'single', 'magical'),
@@ -989,7 +989,8 @@ const UI = {
   showAction(scene, unit) {
     const panel = document.getElementById('action-panel');
     const folder = SPRITE_MAP[unit.name];
-    document.getElementById('action-portrait').src = `assets/sprites/portraits/${folder}.png`;
+    // Use idle_right as half-body portrait in action panel
+    document.getElementById('action-portrait').src = `assets/sprites/poses/${folder}/idle_right.png`;
     document.getElementById('action-unit-name').textContent = `${unit.name} 的回合`;
     const bc = document.getElementById('action-buttons');
     bc.innerHTML = '';
