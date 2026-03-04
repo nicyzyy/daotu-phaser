@@ -45,7 +45,7 @@ class BattleUnit {
 // ─── Config ───
 const SPRITE_MAP = {
   '云逸': 'yunyi', '灵溪': 'lingxi',
-  '飞月': 'fengming', '霜凝': 'moye', '药仙': 'zixuan',
+  '红袖': 'fengming', '雪蔷薇': 'moye', '药仙': 'zixuan',
   '妖狼': 'wolf', '毒蛇精': 'snake', '石魔': 'golem',
   '九尾妖狐': 'yaohu', '幽冥鬼王': 'guiwang',
 };
@@ -53,8 +53,8 @@ const SPRITE_MAP = {
 const SKILL_ICONS = {
   '御剑术': '⚔️', '万剑归宗': '🗡️', '聚灵诀': '💠',
   '灵火术': '🔥', '天火焚原': '🌋', '回春术': '🌿',
-  '破音弦': '🎵', '天籁灭魂曲': '🎶', '乐愈术': '🎼',
-  '冰魄笛音': '❄️', '霜华万里': '🌨️', '冰心护体': '🛡️',
+  '袖中刃': '🗡️', '毒舞天罗': '💃', '媚术': '💋',
+  '冰锥术': '❄️', '暴风雪': '🌨️', '冰盾术': '🛡️',
   '灵草术': '🌱', '万灵回春': '🌸', '净化术': '✨',
 };
 
@@ -251,20 +251,20 @@ class BattleScene extends Phaser.Scene {
           new SkillData('回春术', '恢复自身生命', 18, 40, 'self', 'heal'),
         ]
       }),
-      new BattleUnit('飞月', true, {
-        hp: 85, mp: 110, attack: 8, defense: 5, agility: 60, spirit: 28, realm: '炼气期八层',
+      new BattleUnit('红袖', true, {
+        hp: 90, mp: 50, attack: 26, defense: 4, agility: 92, spirit: 10, realm: '炼气期九层',
         skills: [
-          new SkillData('破音弦', '音波攻击单体', 12, 28, 'single', 'magical'),
-          new SkillData('天籁灭魂曲', '音律攻击全体', 28, 18, 'all', 'magical'),
-          new SkillData('乐愈术', '琴音治愈单体', 20, 35, 'single_ally', 'heal'),
+          new SkillData('袖中刃', '暗器穿刺单体', 8, 32, 'single', 'physical'),
+          new SkillData('毒舞天罗', '毒雾旋舞全体', 20, 18, 'all', 'physical'),
+          new SkillData('媚术', '魅惑降低防御', 12, 0, 'self', 'buff'),
         ]
       }),
-      new BattleUnit('霜凝', true, {
-        hp: 95, mp: 90, attack: 12, defense: 6, agility: 70, spirit: 25, realm: '炼气期八层',
+      new BattleUnit('雪蔷薇', true, {
+        hp: 85, mp: 110, attack: 8, defense: 5, agility: 55, spirit: 30, realm: '炼气期八层',
         skills: [
-          new SkillData('冰魄笛音', '冰系音波攻击单体', 10, 30, 'single', 'magical'),
-          new SkillData('霜华万里', '冰霜攻击全体', 25, 20, 'all', 'magical'),
-          new SkillData('冰心护体', '冰盾保护自身', 12, 0, 'self', 'buff'),
+          new SkillData('冰锥术', '冰锥刺穿单体', 12, 32, 'single', 'magical'),
+          new SkillData('暴风雪', '冰暴攻击全体', 28, 20, 'all', 'magical'),
+          new SkillData('冰盾术', '冰盾保护自身', 15, 0, 'self', 'buff'),
         ]
       }),
       new BattleUnit('药仙', true, {

@@ -1,0 +1,89 @@
+📦 灵溪 (Lingxi) Asset Package — File Inventory
+Generated: 2026-03-04 19:14 UTC
+
+=== PHASE 1: CHARACTER DESIGN ===
+lingxi_back.png — 1.4M
+lingxi_colorpalette.png — 1.1M
+lingxi_front.png — 1.3M
+lingxi_side.png — 1.2M
+
+=== PHASE 2: DIALOGUE PORTRAITS ===
+lingxi_dialogue_angry.png — 1.4M
+lingxi_dialogue_confused.png — 1.4M
+lingxi_dialogue_happy.png — 1.5M
+lingxi_dialogue_neutral.png — 1.5M
+lingxi_dialogue_sad.png — 1.4M
+lingxi_dialogue_surprised.png — 1.5M
+
+=== PHASE 3: OVERWORLD WALK ===
+lingxi_idle_e.png — 1.1M
+lingxi_idle_n.png — 1.1M
+lingxi_idle_ne.png — 1.1M
+lingxi_idle_nw.png — 1.1M
+lingxi_idle_s.png — 1.2M
+lingxi_idle_se.png — 1.2M
+lingxi_idle_sw.png — 1.1M
+lingxi_idle_w.png — 1.1M
+lingxi_walk_e.png — 1.3M
+lingxi_walk_n.png — 1.3M
+lingxi_walk_ne.png — 1.3M
+lingxi_walk_nw.png — 1.2M
+lingxi_walk_s.png — 1.4M
+lingxi_walk_se.png — 1.3M
+lingxi_walk_sw.png — 1.1M
+lingxi_walk_w.png — 1.1M
+
+=== PHASE 4: RIDE/MOUNT ===
+lingxi_dismount_s.png — 1.4M
+lingxi_mount_s.png — 1.4M
+lingxi_ride_idle_e.png — 1.4M
+lingxi_ride_idle_n.png — 1.1M
+lingxi_ride_idle_ne.png — 1.4M
+lingxi_ride_idle_nw.png — 1.4M
+lingxi_ride_idle_s.png — 1.1M
+lingxi_ride_idle_se.png — 1.4M
+lingxi_ride_idle_sw.png — 1.4M
+lingxi_ride_idle_w.png — 1.4M
+lingxi_ride_move_e.png — 1.3M
+lingxi_ride_move_n.png — 1.2M
+lingxi_ride_move_ne.png — 1.5M
+lingxi_ride_move_nw.png — 1.3M
+lingxi_ride_move_s.png — 1.5M
+lingxi_ride_move_se.png — 1.3M
+lingxi_ride_move_sw.png — 1.1M
+lingxi_ride_move_w.png — 1.4M
+
+=== DOCUMENTATION ===
+readme_animations.md — 14K
+
+📊 TOTAL: 44 PNG files, 55M
+
+=== DIRECTORY STRUCTURE ===
+lingxi_production/
+├── design/                 (4 files: front/side/back/colorpalette)
+├── dialogue/               (6 files: 6 emotions)
+├── walk/                   (16 files: 8-dir idle + 8-dir walk)
+├── ride/                   (18 files: 8-dir idle + 8-dir move + mount/dismount)
+├── readme_animations.md    (Technical documentation)
+└── MANIFEST.txt           (This file)
+
+=== USAGE ===
+1. Extract frames from sprite sheets using the code in readme_animations.md
+2. Apply green (#00FF00) chroma key to remove background
+3. Import into Phaser/Unity/Godot using frame dimensions:
+   - Idle: 1024/4 = 256px per frame
+   - Walk: 1024/8 = 128px per frame
+   - Ride Idle: 1024/4 = 256px per frame
+   - Ride Move: 1024/8 = 128px per frame
+   - Mount/Dismount: 1024/6 = ~170px per frame
+4. Set anchor point to center-bottom (0.5, 1.0)
+5. Configure frame rates per animation type (see readme)
+
+=== NOTES ===
+- All sprites use chibi 3-head-tall proportions for overworld
+- Sprites are generated with top-down RPG perspective (~30° elevation)
+- Mount/dismount only available for South direction currently
+- For production: consider manual cleanup or skeletal animation for pixel-perfect consistency
+
+=== CONTACT ===
+For additional directions, variants, or custom animations, contact the asset production team.
