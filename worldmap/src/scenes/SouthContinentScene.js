@@ -41,7 +41,7 @@ export class SouthContinentScene extends Phaser.Scene {
     this.encounters = data.encounters?.items || [];
     this.drawPoiMarkers(map.tileWidth, map.tileHeight);
 
-    this.uiTitle = this.add.text(20, 20, '南瞻部洲大地图（Tilemap版）', {
+    this.uiTitle = this.add.text(20, 20, '南瞻部洲大地图（Tilemap版 V2）', {
       fontSize: '22px', color: '#e2e8f0', backgroundColor: '#0f172acc', padding: { x: 8, y: 4 }
     }).setScrollFactor(0).setDepth(20);
 
