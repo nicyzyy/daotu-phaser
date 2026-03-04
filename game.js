@@ -277,11 +277,41 @@ class BattleScene extends Phaser.Scene {
       }),
     ];
     this.enemyUnits = [
-      new BattleUnit('妖狼', false, { hp: 80, mp: 20, attack: 15, defense: 5, agility: 65, spirit: 5 }),
-      new BattleUnit('毒蛇精', false, { hp: 60, mp: 30, attack: 18, defense: 3, agility: 80, spirit: 12 }),
-      new BattleUnit('石魔', false, { hp: 150, mp: 10, attack: 22, defense: 15, agility: 30, spirit: 3 }),
-      new BattleUnit('九尾妖狐', false, { hp: 110, mp: 60, attack: 20, defense: 6, agility: 85, spirit: 22 }),
-      new BattleUnit('幽冥鬼王', false, { hp: 200, mp: 40, attack: 25, defense: 18, agility: 40, spirit: 15 }),
+      new BattleUnit('妖狼', false, {
+        hp: 80, mp: 20, attack: 15, defense: 5, agility: 65, spirit: 5,
+        skills: [
+          new SkillData('狂嗥', '群体嘶吼降低防御', 10, 12, 'all', 'physical'),
+          new SkillData('噬咬', '猛烈撕咬单体', 5, 22, 'single', 'physical'),
+        ]
+      }),
+      new BattleUnit('毒蛇精', false, {
+        hp: 60, mp: 30, attack: 18, defense: 3, agility: 80, spirit: 12,
+        skills: [
+          new SkillData('毒雾', '毒气弥漫全体', 15, 15, 'all', 'magical'),
+          new SkillData('蛇吻', '剧毒穿刺单体', 8, 28, 'single', 'magical'),
+        ]
+      }),
+      new BattleUnit('石魔', false, {
+        hp: 150, mp: 10, attack: 22, defense: 15, agility: 30, spirit: 3,
+        skills: [
+          new SkillData('地裂', '大地震动全体', 10, 18, 'all', 'physical'),
+        ]
+      }),
+      new BattleUnit('九尾妖狐', false, {
+        hp: 110, mp: 60, attack: 20, defense: 6, agility: 85, spirit: 22,
+        skills: [
+          new SkillData('狐火', '九尾狐火灼烧单体', 12, 30, 'single', 'magical'),
+          new SkillData('魅惑', '妖术攻击全体', 25, 18, 'all', 'magical'),
+          new SkillData('妖力回复', '恢复自身生命', 15, 30, 'self', 'heal'),
+        ]
+      }),
+      new BattleUnit('幽冥鬼王', false, {
+        hp: 200, mp: 40, attack: 25, defense: 18, agility: 40, spirit: 15,
+        skills: [
+          new SkillData('鬼哭', '幽冥鬼火全体', 20, 20, 'all', 'magical'),
+          new SkillData('锁魂链', '锁链束缚单体', 10, 35, 'single', 'physical'),
+        ]
+      }),
     ];
     this.allUnits = [...this.playerUnits, ...this.enemyUnits];
     for (const u of this.allUnits) u.atb = Math.random() * 20 + u.agility * 0.3;
@@ -806,9 +836,26 @@ class BattleScene extends Phaser.Scene {
   _enemyAI(unit) {
     const alive = this.playerUnits.filter(u => !u.isDead);
     if (!alive.length) { this._checkEnd(); return; }
+
     // Smart targeting: prefer low HP targets
     const sorted = [...alive].sort((a, b) => a.hp - b.hp);
     const tgt = Math.random() < 0.6 ? sorted[0] : Phaser.Utils.Array.GetRandom(alive);
+
+    // 40% chance to use a skill if available and has MP
+    if (unit.skills && unit.skills.length > 0 && Math.random() < 0.4) {
+      const usable = unit.skills.filter(sk => unit.mp >= sk.mpCost);
+      if (usable.length > 0) {
+        const sk = Phaser.Utils.Array.GetRandom(usable);
+        // Self heal when low HP
+        if (sk.damageType === 'heal' && unit.hp > unit.maxHp * 0.5) {
+          // Don't heal if HP > 50%, just attack instead
+          this._doAttack(unit, tgt);
+          return;
+        }
+        this._doSkill(unit, sk, sk.targetType === 'self' ? unit : tgt);
+        return;
+      }
+    }
     this._doAttack(unit, tgt);
   }
 
