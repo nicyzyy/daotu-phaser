@@ -605,55 +605,78 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
-  // ─── Overhead HP ───
+  // ─── Side Panel HP System ───
+  // Ally HP: left side panel, Enemy HP: right side panel
+  // Characters only get a tiny name tag floating above (no HP bar on battlefield)
   _buildOverhead() {
-    const c = document.getElementById('overhead-bars');
-    c.innerHTML = '';
+    // Build side panels
+    const allyPanel = document.getElementById('ally-panel');
+    const enemyPanel = document.getElementById('enemy-panel');
+    allyPanel.innerHTML = '';
+    enemyPanel.innerHTML = '';
+
     for (const u of this.allUnits) {
+      const folder = SPRITE_MAP[u.name];
       const side = u.isPlayer ? 'ally' : 'enemy';
+      const panel = u.isPlayer ? allyPanel : enemyPanel;
+
       const el = document.createElement('div');
-      el.className = `oh-bar ${u.isPlayer ? 'oh-ally' : 'oh-enemy'}`;
-      el.id = `oh-${u.name}`;
-      let h = '';
-      if (!u.isPlayer) h += `<div class="oh-name">${u.name}</div>`;
-      h += `<div class="oh-track"><div class="oh-fill hp-${side}" id="ohf-hp-${u.name}"></div></div>`;
-      h += `<div class="oh-text" id="oht-hp-${u.name}">${u.hp}/${u.maxHp}</div>`;
+      el.className = `sp-unit sp-${side}`;
+      el.id = `sp-${u.name}`;
+
+      let h = `<div class="sp-row">`;
+      h += `<img class="sp-portrait" src="assets/sprites/portraits/${folder}.png">`;
+      h += `<div class="sp-info">`;
+      h += `<div class="sp-name ${side}">${u.name}</div>`;
+      h += `<div class="sp-bar-wrap"><div class="sp-bar sp-hp-${side}" id="spf-hp-${u.name}"></div></div>`;
+      h += `<div class="sp-nums" id="spt-hp-${u.name}">${u.hp}/${u.maxHp}</div>`;
       if (u.isPlayer) {
-        h += `<div class="oh-track-mp"><div class="oh-fill mp" id="ohf-mp-${u.name}"></div></div>`;
-        h += `<div class="oh-text" id="oht-mp-${u.name}">${u.mp}/${u.maxMp}</div>`;
+        h += `<div class="sp-bar-wrap mp"><div class="sp-bar sp-mp" id="spf-mp-${u.name}"></div></div>`;
+        h += `<div class="sp-nums mp" id="spt-mp-${u.name}">${u.mp}/${u.maxMp}</div>`;
       }
+      h += `</div></div>`;
       el.innerHTML = h;
-      c.appendChild(el);
+      panel.appendChild(el);
+
+      // Also create floating name tag on battlefield (tiny, no HP)
+      const tag = document.createElement('div');
+      tag.className = `name-tag tag-${side}`;
+      tag.id = `tag-${u.name}`;
+      tag.textContent = u.name;
+      document.getElementById('overhead-bars').appendChild(tag);
     }
   }
 
   _tickOverhead() {
     for (const u of this.allUnits) {
       const sp = this.sprites[u.name];
-      const el = document.getElementById(`oh-${u.name}`);
-      if (!sp || !el || !sp.visible) continue;
-      // Convert render-space coords to CSS-space (divide by DPR)
+      const tag = document.getElementById(`tag-${u.name}`);
+      if (!sp || !tag) continue;
+      if (!sp.visible) { tag.style.display = 'none'; continue; }
+      tag.style.display = '';
       const cx = sp.x / DPR, cy = sp.y / DPR;
       const halfH = (sp.displayHeight / DPR) / 2;
-      // Place HP bar below the sprite (under the feet)
-      el.style.left = `${cx - 55}px`;
-      el.style.top = `${cy + halfH + 4}px`;
+      tag.style.left = `${cx}px`;
+      tag.style.top = `${cy - halfH - 14}px`;
     }
     this._refreshHP();
   }
 
   _refreshHP() {
     for (const u of this.allUnits) {
-      const hf = document.getElementById(`ohf-hp-${u.name}`);
-      const ht = document.getElementById(`oht-hp-${u.name}`);
+      const hf = document.getElementById(`spf-hp-${u.name}`);
+      const ht = document.getElementById(`spt-hp-${u.name}`);
       if (hf) hf.style.width = `${(u.hp / u.maxHp) * 100}%`;
       if (ht) ht.textContent = `${u.hp}/${u.maxHp}`;
       if (u.isPlayer) {
-        const mf = document.getElementById(`ohf-mp-${u.name}`);
-        const mt = document.getElementById(`oht-mp-${u.name}`);
+        const mf = document.getElementById(`spf-mp-${u.name}`);
+        const mt = document.getElementById(`spt-mp-${u.name}`);
         if (mf) mf.style.width = `${(u.mp / u.maxMp) * 100}%`;
         if (mt) mt.textContent = `${u.mp}/${u.maxMp}`;
       }
+      // Highlight dead units
+      const el = document.getElementById(`sp-${u.name}`);
+      if (el) el.classList.toggle('dead', u.isDead);
     }
   }
 
@@ -758,8 +781,10 @@ const UI = {
   },
 
   hideOverhead(name) {
-    const el = document.getElementById(`oh-${name}`);
-    if (el) el.style.display = 'none';
+    const tag = document.getElementById(`tag-${name}`);
+    if (tag) tag.style.display = 'none';
+    const sp = document.getElementById(`sp-${name}`);
+    if (sp) sp.classList.add('dead');
   },
 
   showAction(scene, unit) {

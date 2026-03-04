@@ -112,65 +112,115 @@ body {
 .log-line.system { color: rgba(140,150,170,0.6); font-style: italic; }
 @keyframes logIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; } }
 
-/* ═══ Overhead HP ═══ */
+/* ═══ Floating Name Tags (battlefield) ═══ */
 #overhead-bars { position: absolute; inset: 0; pointer-events: none; }
-.oh-bar {
+.name-tag {
   position: absolute;
-  width: 110px;
-  padding: 3px 6px;
-}
-.oh-bar.oh-ally {
-  background: linear-gradient(180deg, rgba(20,40,30,0.85), rgba(10,25,18,0.75));
-  border: 1px solid rgba(64,232,96,0.3);
-  border-radius: 4px;
-}
-.oh-bar.oh-enemy {
-  background: linear-gradient(180deg, rgba(40,15,15,0.85), rgba(25,10,10,0.75));
-  border: 1px solid rgba(200,48,48,0.3);
-  border-radius: 4px;
-}
-.oh-name {
-  font-size: 10px; color: #ffd080;
-  text-align: center;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
-  margin-bottom: 2px;
+  transform: translateX(-50%);
+  font-size: 10px;
   font-weight: bold;
+  padding: 1px 8px;
+  border-radius: 3px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  white-space: nowrap;
 }
-.oh-track {
+.name-tag.tag-ally {
+  color: #b0f0c0;
+  background: rgba(20,60,30,0.6);
+  border: 1px solid rgba(64,200,96,0.3);
+}
+.name-tag.tag-enemy {
+  color: #ffb0b0;
+  background: rgba(60,15,15,0.6);
+  border: 1px solid rgba(200,64,64,0.3);
+}
+
+/* ═══ Side Panel HP System ═══ */
+.side-panel {
+  position: absolute;
+  top: 56px;
+  width: 155px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  pointer-events: none;
+}
+.side-panel.left { left: 6px; }
+.side-panel.right { right: 6px; }
+
+.sp-unit {
+  display: flex;
+  border-radius: 4px;
+  padding: 3px;
+  transition: opacity 0.3s;
+}
+.sp-unit.sp-ally {
+  background: linear-gradient(90deg, rgba(10,25,15,0.85), rgba(10,20,15,0.5));
+  border: 1px solid rgba(64,200,96,0.25);
+}
+.sp-unit.sp-enemy {
+  background: linear-gradient(270deg, rgba(30,10,10,0.85), rgba(25,10,10,0.5));
+  border: 1px solid rgba(200,64,64,0.25);
+}
+.sp-unit.dead { opacity: 0.3; filter: grayscale(0.8); }
+
+.sp-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+}
+.sp-portrait {
+  width: 28px; height: 28px;
+  border-radius: 3px;
+  object-fit: cover;
+  border: 1px solid rgba(201,168,76,0.4);
+  flex-shrink: 0;
+}
+.sp-info { flex: 1; min-width: 0; }
+.sp-name {
+  font-size: 9px;
+  font-weight: bold;
+  margin-bottom: 1px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-name.ally { color: #a0e8b0; }
+.sp-name.enemy { color: #f0a0a0; }
+
+.sp-bar-wrap {
   width: 100%; height: 5px;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.5);
   border-radius: 3px;
   overflow: hidden;
+  margin-bottom: 1px;
 }
-.oh-fill {
-  height: 100%; border-radius: 3px;
-  transition: width 0.3s ease;
+.sp-bar-wrap.mp { height: 3px; }
+.sp-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.35s ease;
 }
-.oh-fill.hp-ally {
-  background: linear-gradient(180deg, #3ce860, #18a838);
-  box-shadow: 0 0 4px rgba(60,232,96,0.3);
+.sp-hp-ally {
+  background: linear-gradient(90deg, #20a838, #3ce860);
+  box-shadow: 0 0 3px rgba(60,232,96,0.3);
 }
-.oh-fill.hp-enemy {
-  background: linear-gradient(180deg, #e84040, #a01818);
-  box-shadow: 0 0 4px rgba(232,64,64,0.3);
+.sp-hp-enemy {
+  background: linear-gradient(90deg, #e84040, #a01818);
+  box-shadow: 0 0 3px rgba(232,64,64,0.3);
 }
-.oh-fill.mp {
-  background: linear-gradient(180deg, #4080e8, #1840a0);
-  box-shadow: 0 0 4px rgba(64,128,232,0.3);
+.sp-mp {
+  background: linear-gradient(90deg, #1840a0, #4080e8);
+  box-shadow: 0 0 3px rgba(64,128,232,0.3);
 }
-.oh-track-mp {
-  width: 90%; height: 3px;
-  background: rgba(0,0,0,0.5);
-  border-radius: 2px;
-  overflow: hidden;
-  margin: 2px auto 0;
-}
-.oh-text {
-  font-size: 8px; text-align: center;
-  color: rgba(220,230,245,0.7);
-  margin-top: 1px;
+.sp-nums {
+  font-size: 7px;
+  color: rgba(220,230,245,0.6);
   text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 }
+.sp-nums.mp { font-size: 7px; color: rgba(160,180,230,0.5); }
 
 /* ═══ Action Panel ═══ */
 #action-panel {
