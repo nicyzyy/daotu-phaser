@@ -23,6 +23,11 @@ body {
   top: 0; left: 0;
   width: 1280px; height: 720px;
 }
+/* Canvas renders at RW×RH but displays at 1280×720 = crisp HiDPI */
+#game-container canvas {
+  width: 1280px !important;
+  height: 720px !important;
+}
 #ui-overlay {
   position: absolute;
   top: 0; left: 0;

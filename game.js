@@ -63,6 +63,9 @@ const LAYOUT = {
 };
 
 const GW = 1280, GH = 720;
+// HiDPI: 渲染分辨率 = 逻辑尺寸 × devicePixelRatio
+const DPR = Math.min(Math.ceil(window.devicePixelRatio || 1), 3);
+const RW = GW * DPR, RH = GH * DPR;
 
 // ─── Battle Scene ───
 class BattleScene extends Phaser.Scene {
@@ -93,11 +96,11 @@ class BattleScene extends Phaser.Scene {
   }
 
   create() {
-    // BG cover
-    const bg = this.add.image(GW / 2, GH / 2, 'battle_bg');
+    // BG cover (render space = RW×RH)
+    const bg = this.add.image(RW / 2, RH / 2, 'battle_bg');
     const src = this.textures.get('battle_bg').getSourceImage();
-    bg.setScale(Math.max(GW / src.width, GH / src.height)).setDepth(-10);
-    this.tweens.add({ targets: bg, x: { from: GW / 2 - 4, to: GW / 2 + 4 }, duration: 10000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    bg.setScale(Math.max(RW / src.width, RH / src.height)).setDepth(-10);
+    this.tweens.add({ targets: bg, x: { from: RW / 2 - 4 * DPR, to: RW / 2 + 4 * DPR }, duration: 10000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     this._createUnits();
     this._spawnSprites();
@@ -170,15 +173,15 @@ class BattleScene extends Phaser.Scene {
       const lay = LAYOUT[u.name];
       if (!folder || !lay) continue;
       const dir = u.isPlayer ? 'right' : 'left';
-      const sp = this.add.image(GW * lay.x, GH * lay.y, `${folder}_idle_${dir}`);
+      const sp = this.add.image(RW * lay.x, RH * lay.y, `${folder}_idle_${dir}`);
       const texH = sp.texture.getSourceImage().height;
-      const sc = lay.h / texH;
-      sp.setScale(sc).setDepth(Math.floor(GH * lay.y));
+      const sc = (lay.h * DPR) / texH;
+      sp.setScale(sc).setDepth(Math.floor(RH * lay.y));
       sp.setData('folder', folder);
       sp.setData('dir', dir);
       sp.setData('sc', sc);
       this.sprites[u.name] = sp;
-      this.basePos[u.name] = { x: GW * lay.x, y: GH * lay.y };
+      this.basePos[u.name] = { x: RW * lay.x, y: RH * lay.y };
       this._idleAnim(u.name);
     }
   }
@@ -318,7 +321,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   _tickATB() {
-    const trackW = GW - 100; // padding 50 each side
+    const trackW = GW - 100; // CSS-space padding 50 each side
     for (const u of this.allUnits) {
       const el = document.getElementById(`atb-${u.name}`);
       if (!el) continue;
@@ -355,8 +358,10 @@ class BattleScene extends Phaser.Scene {
       const sp = this.sprites[u.name];
       const el = document.getElementById(`oh-${u.name}`);
       if (!sp || !el || !sp.visible) continue;
-      const headY = sp.y - sp.displayHeight / 2;
-      el.style.left = `${sp.x - 55}px`;
+      // Convert render-space coords to CSS-space (divide by DPR)
+      const cx = sp.x / DPR, cy = sp.y / DPR;
+      const headY = cy - (sp.displayHeight / DPR) / 2;
+      el.style.left = `${cx - 55}px`;
       el.style.top = `${headY - el.offsetHeight - 6}px`;
     }
     this._refreshHP();
@@ -469,8 +474,10 @@ const UI = {
     const el = document.createElement('div');
     el.className = 'dmg-float' + (heal ? ' heal' : '');
     el.textContent = heal ? `+${val}` : `-${val}`;
-    el.style.left = `${sp.x + Phaser.Math.Between(-8, 8)}px`;
-    el.style.top = `${sp.y - sp.displayHeight / 2 - 15}px`;
+    // Convert render coords to CSS coords
+    const cx = sp.x / DPR, cy = sp.y / DPR;
+    el.style.left = `${cx + Phaser.Math.Between(-8, 8)}px`;
+    el.style.top = `${cy - (sp.displayHeight / DPR) / 2 - 15}px`;
     document.getElementById('ui-overlay').appendChild(el);
     setTimeout(() => el.remove(), 1000);
   },
@@ -572,8 +579,8 @@ window.addEventListener('resize', syncScale);
 // ─── Launch ───
 const config = {
   type: Phaser.AUTO,
-  width: GW,
-  height: GH,
+  width: RW,   // Render at high-res
+  height: RH,
   parent: 'game-container',
   backgroundColor: '#080a18',
   scene: [BattleScene],
