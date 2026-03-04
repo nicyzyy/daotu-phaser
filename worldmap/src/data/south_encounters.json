@@ -1,0 +1,12 @@
+{
+  "items": [
+    { "id": "enc_rain_talisman", "name": "雨夜问篆", "rarity": "conditional", "regionId": "wuyin_swamp", "tileX": 260, "tileY": 430, "weight": 14, "conditions": ["weather:rain", "time:night"] },
+    { "id": "enc_old_chess", "name": "旧观棋局", "rarity": "rare", "regionId": "qingyun_inner", "tileX": 670, "tileY": 200, "weight": 6, "conditions": ["item:bronze_chess"] },
+    { "id": "enc_escort_black", "name": "黑市押镖", "rarity": "conditional", "regionId": "duanbei_canyon", "tileX": 520, "tileY": 725, "weight": 11, "conditions": ["faction:gray_market>=1"] },
+    { "id": "enc_forest_spirit", "name": "灵杉夜哭", "rarity": "common", "regionId": "lingshan_forest", "tileX": 760, "tileY": 470, "weight": 20, "conditions": [] },
+    { "id": "enc_swamp_lotus", "name": "沼泽异莲", "rarity": "common", "regionId": "wuyin_swamp", "tileX": 200, "tileY": 460, "weight": 22, "conditions": [] },
+    { "id": "enc_array_echo", "name": "阵灵回响", "rarity": "conditional", "regionId": "fulong_plain", "tileX": 540, "tileY": 470, "weight": 16, "conditions": ["realm:foundation+"] },
+    { "id": "enc_port_stowaway", "name": "渡口偷渡客", "rarity": "common", "regionId": "guihong_port", "tileX": 250, "tileY": 680, "weight": 18, "conditions": [] },
+    { "id": "enc_pit_whisper", "name": "坠渊低语", "rarity": "rare", "regionId": "taiyi_sinkhole", "tileX": 790, "tileY": 740, "weight": 5, "conditions": ["sanity<60"] }
+  ]
+}

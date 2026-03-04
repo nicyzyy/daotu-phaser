@@ -1,0 +1,35 @@
+{
+  "world": {
+    "name": "南瞻部洲",
+    "widthTiles": 1024,
+    "heightTiles": 1024,
+    "tileSize": 32
+  },
+  "chunks": {
+    "chunkSizeTiles": 128,
+    "rows": 8,
+    "cols": 8
+  },
+  "regions": [
+    { "id": "yunmeng_city", "name": "云梦主城", "xTiles": 96, "yTiles": 96, "widthTiles": 192, "heightTiles": 160, "controlFaction": "yunmeng_pref" },
+    { "id": "qingyun_outer", "name": "青云外山", "xTiles": 320, "yTiles": 96, "widthTiles": 224, "heightTiles": 192, "controlFaction": "qingyun" },
+    { "id": "qingyun_inner", "name": "青云内观", "xTiles": 576, "yTiles": 96, "widthTiles": 160, "heightTiles": 160, "controlFaction": "qingyun" },
+    { "id": "wuyin_swamp", "name": "雾隐泽", "xTiles": 128, "yTiles": 320, "widthTiles": 224, "heightTiles": 192, "controlFaction": "clans_union" },
+    { "id": "fulong_plain", "name": "伏龙古阵原", "xTiles": 384, "yTiles": 320, "widthTiles": 224, "heightTiles": 224, "controlFaction": "qingyun" },
+    { "id": "lingshan_forest", "name": "灵杉林海", "xTiles": 640, "yTiles": 320, "widthTiles": 224, "heightTiles": 224, "controlFaction": "clans_union" },
+    { "id": "guihong_port", "name": "归鸿渡口", "xTiles": 128, "yTiles": 576, "widthTiles": 192, "heightTiles": 160, "controlFaction": "sihai_guild" },
+    { "id": "duanbei_canyon", "name": "断碑峡谷", "xTiles": 384, "yTiles": 608, "widthTiles": 224, "heightTiles": 192, "controlFaction": "gray_market" },
+    { "id": "taiyi_sinkhole", "name": "太乙天坑", "xTiles": 672, "yTiles": 608, "widthTiles": 192, "heightTiles": 192, "controlFaction": "gray_market" }
+  ],
+  "connections": [
+    ["yunmeng_city", "qingyun_outer"],
+    ["qingyun_outer", "qingyun_inner"],
+    ["yunmeng_city", "wuyin_swamp"],
+    ["wuyin_swamp", "fulong_plain"],
+    ["fulong_plain", "lingshan_forest"],
+    ["wuyin_swamp", "guihong_port"],
+    ["fulong_plain", "duanbei_canyon"],
+    ["lingshan_forest", "taiyi_sinkhole"],
+    ["duanbei_canyon", "taiyi_sinkhole"]
+  ]
+}

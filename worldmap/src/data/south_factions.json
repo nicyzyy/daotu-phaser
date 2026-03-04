@@ -1,0 +1,9 @@
+{
+  "items": [
+    { "id": "qingyun", "name": "青云观", "type": "sect", "alignment": "lawful" },
+    { "id": "yunmeng_pref", "name": "云梦府衙", "type": "state", "alignment": "neutral" },
+    { "id": "sihai_guild", "name": "四海行商会", "type": "guild", "alignment": "neutral" },
+    { "id": "clans_union", "name": "地方氏族联盟", "type": "clan", "alignment": "neutral" },
+    { "id": "gray_market", "name": "无面黑市", "type": "shadow", "alignment": "chaotic" }
+  ]
+}

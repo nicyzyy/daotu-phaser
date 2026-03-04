@@ -1,0 +1,13 @@
+{
+  "items": [
+    { "id": "poi_yunmeng", "name": "云梦城", "type": "city", "regionId": "yunmeng_city", "tileX": 180, "tileY": 170 },
+    { "id": "poi_qingyun_gate", "name": "青云山门", "type": "sect", "regionId": "qingyun_outer", "tileX": 410, "tileY": 180 },
+    { "id": "poi_qingyun_core", "name": "太清道观", "type": "sect_core", "regionId": "qingyun_inner", "tileX": 640, "tileY": 170 },
+    { "id": "poi_swamp_village", "name": "泽畔村", "type": "village", "regionId": "wuyin_swamp", "tileX": 220, "tileY": 410 },
+    { "id": "poi_fulong_stela", "name": "伏龙阵碑", "type": "ruin", "regionId": "fulong_plain", "tileX": 500, "tileY": 430 },
+    { "id": "poi_lingshan_outpost", "name": "灵杉巡林营", "type": "outpost", "regionId": "lingshan_forest", "tileX": 740, "tileY": 450 },
+    { "id": "poi_guihong", "name": "归鸿渡口", "type": "port", "regionId": "guihong_port", "tileX": 230, "tileY": 650 },
+    { "id": "poi_duanbei_blackmarket", "name": "断碑黑市", "type": "black_market", "regionId": "duanbei_canyon", "tileX": 500, "tileY": 700 },
+    { "id": "poi_taiyi_pit", "name": "太乙坠渊", "type": "forbidden", "regionId": "taiyi_sinkhole", "tileX": 760, "tileY": 720 }
+  ]
+}
