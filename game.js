@@ -53,15 +53,33 @@ const SKILL_ICONS = {
   '灵火术': '🔥', '天火焚原': '🌋', '回春术': '🌿',
 };
 
-// 布局: x/y 百分比基于 1280x720, h = 目标显示高度
-// y 是脚底位置 (origin 0.85), 调高 y 值让角色脚踩地面
-const LAYOUT = {
-  '剑修·云逸': { h: 200, x: 0.22, y: 0.72 },
-  '丹修·灵溪': { h: 180, x: 0.09, y: 0.75 },
-  '妖狼':     { h: 180, x: 0.60, y: 0.72 },
-  '毒蛇精':   { h: 170, x: 0.74, y: 0.72 },
-  '石魔':     { h: 210, x: 0.86, y: 0.70 },
-};
+// ─── 纵列站位系统 ───
+// 支持双方各 5 人，分前排(2)和后排(3)
+// 我方在左侧面向右，敌方在右侧面向左
+// row: 'front'=前排(靠中间), 'back'=后排(靠边)
+const CHAR_HEIGHT = 140; // 所有角色统一显示高度(CSS px)
+
+// 我方站位 (左侧)
+const ALLY_SLOTS = [
+  // 前排 (靠中间, x 较大)
+  { x: 0.28, y: 0.42, row: 'front' },  // 前排上
+  { x: 0.26, y: 0.58, row: 'front' },  // 前排下
+  // 后排 (靠左边, x 较小)
+  { x: 0.14, y: 0.34, row: 'back' },   // 后排上
+  { x: 0.12, y: 0.50, row: 'back' },   // 后排中
+  { x: 0.14, y: 0.66, row: 'back' },   // 后排下
+];
+
+// 敌方站位 (右侧, 镜像)
+const ENEMY_SLOTS = [
+  // 前排 (靠中间, x 较小)
+  { x: 0.72, y: 0.42, row: 'front' },
+  { x: 0.74, y: 0.58, row: 'front' },
+  // 后排 (靠右边, x 较大)
+  { x: 0.86, y: 0.34, row: 'back' },
+  { x: 0.88, y: 0.50, row: 'back' },
+  { x: 0.86, y: 0.66, row: 'back' },
+];
 
 const GW = 1280, GH = 720;
 // HiDPI: 渲染分辨率 = 逻辑尺寸 × devicePixelRatio
@@ -169,22 +187,30 @@ class BattleScene extends Phaser.Scene {
 
   // ─── Sprites ───
   _spawnSprites() {
+    // Assign slots: allies use ALLY_SLOTS, enemies use ENEMY_SLOTS
+    let allyIdx = 0, enemyIdx = 0;
     for (const u of this.allUnits) {
       const folder = SPRITE_MAP[u.name];
-      const lay = LAYOUT[u.name];
-      if (!folder || !lay) continue;
+      if (!folder) continue;
+      const slots = u.isPlayer ? ALLY_SLOTS : ENEMY_SLOTS;
+      const idx = u.isPlayer ? allyIdx++ : enemyIdx++;
+      if (idx >= slots.length) continue;
+      const slot = slots[idx];
+
       const dir = u.isPlayer ? 'right' : 'left';
-      const sp = this.add.image(RW * lay.x, RH * lay.y, `${folder}_idle_${dir}`);
+      const sp = this.add.image(RW * slot.x, RH * slot.y, `${folder}_idle_${dir}`);
       const texH = sp.texture.getSourceImage().height;
-      const sc = (lay.h * DPR) / texH;
-      // Set origin to bottom-center so feet anchor at layout position
-      sp.setOrigin(0.5, 0.85);
-      sp.setScale(sc).setDepth(Math.floor(RH * lay.y));
+      const sc = (CHAR_HEIGHT * DPR) / texH;  // 统一高度
+      sp.setOrigin(0.5, 0.5);
+      sp.setScale(sc);
+      // Depth: 后排在前排后面 (y 越大越靠前)
+      sp.setDepth(Math.floor(RH * slot.y));
       sp.setData('folder', folder);
       sp.setData('dir', dir);
       sp.setData('sc', sc);
+      sp.setData('slot', slot);
       this.sprites[u.name] = sp;
-      this.basePos[u.name] = { x: RW * lay.x, y: RH * lay.y };
+      this.basePos[u.name] = { x: RW * slot.x, y: RH * slot.y };
       this._idleAnim(u.name);
     }
   }
@@ -608,9 +634,10 @@ class BattleScene extends Phaser.Scene {
       if (!sp || !el || !sp.visible) continue;
       // Convert render-space coords to CSS-space (divide by DPR)
       const cx = sp.x / DPR, cy = sp.y / DPR;
-      const headY = cy - (sp.displayHeight / DPR) / 2;
+      const halfH = (sp.displayHeight / DPR) / 2;
+      // Place HP bar below the sprite (under the feet)
       el.style.left = `${cx - 55}px`;
-      el.style.top = `${headY - el.offsetHeight - 6}px`;
+      el.style.top = `${cy + halfH + 4}px`;
     }
     this._refreshHP();
   }
@@ -725,7 +752,7 @@ const UI = {
     // Convert render coords to CSS coords
     const cx = sp.x / DPR, cy = sp.y / DPR;
     el.style.left = `${cx + Phaser.Math.Between(-8, 8)}px`;
-    el.style.top = `${cy - (sp.displayHeight / DPR) / 2 - 15}px`;
+    el.style.top = `${cy - (sp.displayHeight / DPR) / 2 - 10}px`;
     document.getElementById('ui-overlay').appendChild(el);
     setTimeout(() => el.remove(), 1000);
   },
