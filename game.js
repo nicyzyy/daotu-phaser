@@ -335,7 +335,7 @@ class BattleScene extends Phaser.Scene {
     for (const u of this.allUnits) {
       const side = u.isPlayer ? 'ally' : 'enemy';
       const el = document.createElement('div');
-      el.className = 'oh-bar';
+      el.className = `oh-bar ${u.isPlayer ? 'oh-ally' : 'oh-enemy'}`;
       el.id = `oh-${u.name}`;
       let h = '';
       if (!u.isPlayer) h += `<div class="oh-name">${u.name}</div>`;

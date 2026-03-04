@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════
-   道途 V2 — 全面修复版
+   道途 V3 — 素材集成版
+   使用 OpenAI gpt-image-1 生成的仙侠 UI 素材
    ═══════════════════════════════════════════ */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -9,7 +10,7 @@ body {
   font-family: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif;
 }
 
-/* ─── Wrapper: 固定 1280x720, CSS transform 统一缩放 ─── */
+/* ─── Wrapper ─── */
 #game-wrapper {
   position: absolute;
   top: 0; left: 0;
@@ -17,13 +18,11 @@ body {
   transform-origin: 0 0;
   overflow: hidden;
 }
-
 #game-container {
   position: absolute;
   top: 0; left: 0;
   width: 1280px; height: 720px;
 }
-
 #ui-overlay {
   position: absolute;
   top: 0; left: 0;
@@ -33,28 +32,27 @@ body {
 }
 #ui-overlay > * { pointer-events: auto; }
 
-/* ─── ATB Bar ─── */
+/* ═══ ATB Bar — 使用 atb_bar_bg.png ═══ */
 #atb-bar {
   position: absolute;
   top: 0; left: 0;
   width: 1280px; height: 58px;
-  background: linear-gradient(180deg, rgba(8,10,24,0.92), rgba(8,10,24,0.65));
-  border-bottom: 2px solid rgba(201,168,76,0.35);
+  background: url('assets/ui/atb_bar_bg.png') center / cover no-repeat;
+  /* 在素材上叠加半透明渐变增强可读性 */
+  box-shadow: inset 0 -2px 0 rgba(201,168,76,0.3);
 }
-
 #atb-track {
   position: absolute;
-  top: 28px; left: 50px; right: 50px;
-  height: 3px;
-  background: linear-gradient(90deg, rgba(201,168,76,0.15), rgba(201,168,76,0.5), rgba(201,168,76,0.15));
+  top: 27px; left: 50px; right: 50px;
+  height: 4px;
+  background: url('assets/ui/atb_track.png') center / 100% 100% no-repeat;
 }
-
 #atb-ready-line {
   position: absolute;
-  right: 50px; top: 8px; bottom: 8px;
-  width: 2px;
-  background: #40e8e0;
-  box-shadow: 0 0 8px rgba(64,232,224,0.5);
+  right: 50px; top: 6px;
+  width: 4px; height: 46px;
+  background: url('assets/ui/atb_ready_line.png') center / contain no-repeat;
+  filter: drop-shadow(0 0 6px rgba(64,232,224,0.5));
 }
 
 .atb-icon {
@@ -64,138 +62,191 @@ body {
   transition: left 0.12s ease-out;
 }
 .atb-icon-bg {
-  position: absolute;
-  inset: 2px;
-  border-radius: 4px;
+  position: absolute; inset: 3px;
+  border-radius: 3px;
   overflow: hidden;
   background: rgba(4,5,10,0.5);
 }
 .atb-icon-bg img { width: 100%; height: 100%; object-fit: cover; }
+
+/* 头像框使用素材 */
 .atb-icon-frame {
   position: absolute; inset: 0;
-  border-radius: 5px;
-  border: 2px solid rgba(201,168,76,0.5);
+  background-size: contain;
+  background-repeat: no-repeat;
 }
-.atb-icon-frame.ally { border-color: rgba(64,232,224,0.6); }
-.atb-icon-frame.enemy { border-color: rgba(200,48,48,0.6); }
+.atb-icon-frame.ally { background-image: url('assets/ui/portrait_frame_ally.png'); }
+.atb-icon-frame.enemy { background-image: url('assets/ui/portrait_frame_enemy.png'); }
+
 .atb-icon-accent {
   position: absolute;
-  bottom: 1px; left: 5px; right: 5px;
+  bottom: 0; left: 5px; right: 5px;
   height: 2px; border-radius: 1px;
 }
-.atb-icon-accent.ally { background: #40e8e0; }
-.atb-icon-accent.enemy { background: #c83030; }
+.atb-icon-accent.ally { background: #40e8e0; box-shadow: 0 0 4px rgba(64,232,224,0.4); }
+.atb-icon-accent.enemy { background: #c83030; box-shadow: 0 0 4px rgba(200,48,48,0.4); }
 .atb-icon.dead { opacity: 0.12; }
 
-/* ─── Battle Log ─── */
+/* ═══ Battle Log — 使用 log_panel.png ═══ */
 #battle-log {
   position: absolute;
   top: 66px; left: 12px;
-  width: 250px;
-  max-height: 160px;
-  background: rgba(6,10,30,0.72);
-  border: 1px solid rgba(201,168,76,0.2);
-  border-radius: 6px;
-  padding: 7px 9px;
+  width: 230px; height: 170px;
+  background: url('assets/ui/log_panel.png') center / 100% 100% no-repeat;
+  padding: 12px 14px;
   overflow-y: auto;
 }
 #battle-log::-webkit-scrollbar { width: 3px; }
 #battle-log::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.3); border-radius: 2px; }
 
-#log-content { font-size: 11px; line-height: 1.5; color: rgba(200,210,230,0.85); }
+#log-content { font-size: 11px; line-height: 1.5; color: rgba(210,220,235,0.9); }
 .log-line { animation: logIn 0.25s ease-out; }
-.log-line.kill { color: #c83030; font-weight: bold; }
-.log-line.heal { color: #40e8e0; }
-.log-line.skill { color: #c9a84c; }
-.log-line.system { color: rgba(150,160,180,0.65); font-style: italic; }
+.log-line.kill { color: #ff5050; font-weight: bold; }
+.log-line.heal { color: #50ffd0; }
+.log-line.skill { color: #ffd060; }
+.log-line.system { color: rgba(160,170,190,0.65); font-style: italic; }
 @keyframes logIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
 
-/* ─── Overhead HP ─── */
+/* ═══ Overhead HP Bars — 使用 overhead_ally/enemy.png ═══ */
 #overhead-bars { position: absolute; inset: 0; pointer-events: none; }
-.oh-bar {
-  position: absolute; width: 110px;
-  background: rgba(6,10,30,0.78);
-  border: 1px solid rgba(201,168,76,0.18);
-  border-radius: 4px;
-  padding: 3px 5px;
-}
-.oh-name { font-size: 10px; color: #c9a84c; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.8); margin-bottom: 2px; }
-.oh-track { width: 100%; height: 7px; background: rgba(6,3,3,0.8); border-radius: 2px; overflow: hidden; }
-.oh-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
-.oh-fill.hp-ally { background: linear-gradient(180deg, #2cd45a, #186838); }
-.oh-fill.hp-enemy { background: linear-gradient(180deg, #d43030, #681828); }
-.oh-fill.mp { background: linear-gradient(180deg, #3060c0, #182860); }
-.oh-track-mp { width: 80%; height: 5px; background: rgba(3,3,12,0.7); border-radius: 2px; overflow: hidden; margin: 2px auto 0; }
-.oh-text { font-size: 8px; text-align: center; color: rgba(200,220,240,0.65); margin-top: 1px; }
 
-/* ─── Action Panel ─── */
+.oh-bar {
+  position: absolute;
+  padding: 3px 6px;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+.oh-bar.oh-ally {
+  width: 110px;
+  background-image: url('assets/ui/overhead_ally.png');
+}
+.oh-bar.oh-enemy {
+  width: 110px;
+  background-image: url('assets/ui/overhead_enemy.png');
+}
+
+.oh-name {
+  font-size: 10px; color: #ffd080;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  margin-bottom: 2px;
+}
+.oh-track {
+  width: 100%; height: 7px;
+  background: url('assets/ui/bar_bg.png') center / 100% 100% no-repeat;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.oh-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
+.oh-fill.hp-ally {
+  background: url('assets/ui/bar_hp_green.png') left / auto 100% no-repeat;
+  background-color: #186838;
+}
+.oh-fill.hp-enemy {
+  background: url('assets/ui/bar_hp_red.png') left / auto 100% no-repeat;
+  background-color: #681828;
+}
+.oh-fill.mp {
+  background: url('assets/ui/bar_mp_blue.png') left / auto 100% no-repeat;
+  background-color: #182860;
+}
+.oh-track-mp {
+  width: 80%; height: 5px;
+  background: url('assets/ui/bar_bg.png') center / 100% 100% no-repeat;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 2px auto 0;
+}
+.oh-text { font-size: 8px; text-align: center; color: rgba(210,225,245,0.7); margin-top: 1px; }
+
+/* ═══ Action Panel — 使用 action_panel_bg.png ═══ */
 #action-panel {
   position: absolute;
-  bottom: 10px; left: 50%; transform: translateX(-50%);
-  width: 680px;
-  background: rgba(6,10,30,0.9);
-  border: 1px solid rgba(201,168,76,0.4);
+  bottom: 8px; left: 50%; transform: translateX(-50%);
+  width: 700px; min-height: 120px;
+  background: url('assets/ui/action_panel_bg.png') center / 100% 100% no-repeat;
+  /* 叠加半透明层增强文字可读性 */
+  box-shadow: inset 0 0 60px rgba(6,10,30,0.4);
   border-radius: 8px;
-  padding: 10px 14px;
-  backdrop-filter: blur(6px);
+  padding: 14px 18px;
   animation: slideUp 0.18s ease-out;
 }
-@keyframes slideUp { from { opacity:0; transform:translateX(-50%) translateY(16px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+@keyframes slideUp {
+  from { opacity:0; transform:translateX(-50%) translateY(16px); }
+  to { opacity:1; transform:translateX(-50%) translateY(0); }
+}
 
 .panel-header {
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 8px; padding-bottom: 6px;
-  border-bottom: 1px solid rgba(201,168,76,0.2);
+  border-bottom: 1px solid rgba(201,168,76,0.25);
 }
-#action-portrait {
-  width: 36px; height: 36px;
-  border-radius: 4px;
-  border: 2px solid rgba(64,232,224,0.5);
-  object-fit: cover;
-}
-#action-unit-name { font-size: 15px; color: #c9a84c; text-shadow: 0 0 8px rgba(201,168,76,0.2); }
 
+/* 行动面板头像用素材框 */
+#action-portrait {
+  width: 40px; height: 40px;
+  border-radius: 3px;
+  object-fit: cover;
+  /* 头像框效果 */
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  background: rgba(4,5,10,0.5);
+}
+.portrait-wrap {
+  position: relative;
+  width: 44px; height: 44px;
+}
+.portrait-wrap img { position: absolute; inset: 2px; width: 40px; height: 40px; object-fit: cover; border-radius: 2px; }
+.portrait-wrap::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: url('assets/ui/portrait_frame_ally.png') center / contain no-repeat;
+}
+
+#action-unit-name {
+  font-size: 15px; color: #c9a84c;
+  text-shadow: 0 0 10px rgba(201,168,76,0.25);
+}
 #action-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 
-/* ─── Buttons ─── */
+/* ═══ Buttons — 使用 btn_*.png 四态 ═══ */
 .btn-xianxia {
-  background: linear-gradient(180deg, rgba(26,138,90,0.75), rgba(12,80,50,0.88));
-  border: 1px solid rgba(201,168,76,0.45);
-  border-radius: 5px;
+  background: url('assets/ui/btn_normal.png') center / 100% 100% no-repeat;
+  border: none;
+  border-radius: 4px;
   color: #e8dcc0;
   font-family: inherit; font-size: 11px;
-  padding: 7px 5px;
+  padding: 8px 6px;
   cursor: pointer; text-align: center; line-height: 1.35;
-  transition: all 0.12s;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  transition: all 0.1s;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
 }
 .btn-xianxia:hover {
-  background: linear-gradient(180deg, rgba(36,168,110,0.88), rgba(18,100,65,0.95));
-  border-color: #c9a84c;
-  box-shadow: 0 0 10px rgba(201,168,76,0.25), inset 0 1px 0 rgba(255,255,255,0.08);
+  background-image: url('assets/ui/btn_hover.png');
   transform: translateY(-1px);
+  filter: brightness(1.1);
 }
-.btn-xianxia:active { transform: translateY(0); }
+.btn-xianxia:active {
+  background-image: url('assets/ui/btn_pressed.png');
+  transform: translateY(0);
+}
 .btn-xianxia:disabled {
-  background: rgba(25,25,35,0.55);
-  border-color: rgba(80,80,90,0.3);
+  background-image: url('assets/ui/btn_disabled.png');
   color: rgba(100,100,110,0.45);
-  cursor: not-allowed; transform: none; box-shadow: none;
+  cursor: not-allowed; transform: none; filter: none;
 }
 .btn-name { font-size: 12px; font-weight: bold; color: #c9a84c; }
-.btn-stats { font-size: 9px; color: rgba(190,195,210,0.65); margin-top: 1px; }
-.btn-desc { font-size: 9px; color: rgba(140,150,165,0.5); margin-top: 1px; }
+.btn-stats { font-size: 9px; color: rgba(200,205,215,0.65); margin-top: 1px; }
+.btn-desc { font-size: 9px; color: rgba(150,160,170,0.5); margin-top: 1px; }
 
-/* ─── Target Panel ─── */
+/* ═══ Target Panel — 使用 target_panel.png ═══ */
 #target-panel {
   position: absolute;
   bottom: 10px; left: 50%; transform: translateX(-50%);
   width: 300px;
-  background: rgba(6,10,30,0.92);
-  border: 1px solid rgba(200,48,48,0.35);
+  background: url('assets/ui/target_panel.png') center / 100% 100% no-repeat;
   border-radius: 8px;
-  padding: 10px 14px;
-  backdrop-filter: blur(6px);
+  padding: 14px 16px;
   animation: slideUp 0.18s ease-out;
 }
 .panel-title {
@@ -205,48 +256,52 @@ body {
 }
 #target-buttons { display: flex; flex-direction: column; gap: 5px; }
 .btn-target {
-  background: linear-gradient(180deg, rgba(200,48,48,0.25), rgba(100,20,20,0.45));
-  border: 1px solid rgba(200,48,48,0.35);
-  border-radius: 5px;
+  background: url('assets/ui/btn_normal.png') center / 100% 100% no-repeat;
+  border: none;
+  border-radius: 4px;
   color: #e8dcc0; font-family: inherit; font-size: 12px;
-  padding: 7px 10px; cursor: pointer; text-align: left;
-  transition: all 0.12s;
+  padding: 8px 10px; cursor: pointer; text-align: left;
+  transition: all 0.1s;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 .btn-target:hover {
-  background: linear-gradient(180deg, rgba(200,48,48,0.45), rgba(130,30,30,0.6));
-  border-color: #c83030;
-  box-shadow: 0 0 8px rgba(200,48,48,0.25);
+  background-image: url('assets/ui/btn_hover.png');
+  filter: brightness(1.1) hue-rotate(-20deg);
 }
 .btn-cancel {
   margin-top: 6px; width: 100%;
-  background: rgba(35,35,45,0.55);
-  border: 1px solid rgba(80,80,90,0.3);
-  border-radius: 5px;
-  color: rgba(160,165,175,0.6);
+  background: url('assets/ui/btn_disabled.png') center / 100% 100% no-repeat;
+  border: none; border-radius: 4px;
+  color: rgba(170,175,185,0.6);
   font-family: inherit; font-size: 11px;
-  padding: 5px; cursor: pointer;
+  padding: 6px; cursor: pointer;
 }
 
-/* ─── Result Panel ─── */
+/* ═══ Result Panel — 使用 result_panel.png ═══ */
 #result-panel {
   position: absolute;
   top: 50%; left: 50%; transform: translate(-50%,-50%);
-  width: 400px;
-  background: rgba(6,10,30,0.95);
-  border: 2px solid rgba(201,168,76,0.55);
+  width: 420px; height: 300px;
+  background: url('assets/ui/result_panel.png') center / 100% 100% no-repeat;
   border-radius: 10px;
-  padding: 28px;
+  padding: 40px 30px;
   text-align: center;
-  backdrop-filter: blur(10px);
   animation: resultIn 0.35s ease-out;
 }
-@keyframes resultIn { from { opacity:0; transform:translate(-50%,-50%) scale(0.75); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
-#result-text { font-size: 26px; margin-bottom: 18px; text-shadow: 0 0 18px currentColor; white-space: pre-line; }
-.result-win { color: #c9a84c; }
-.result-lose { color: #c83030; }
-#result-btn { font-size: 15px; padding: 10px 36px; }
+@keyframes resultIn {
+  from { opacity:0; transform:translate(-50%,-50%) scale(0.75); }
+  to { opacity:1; transform:translate(-50%,-50%) scale(1); }
+}
+#result-text {
+  font-size: 26px; margin-bottom: 20px;
+  text-shadow: 0 0 18px currentColor;
+  white-space: pre-line;
+}
+.result-win { color: #ffd84a; }
+.result-lose { color: #ff5050; }
+#result-btn { font-size: 15px; padding: 10px 36px; margin-top: 10px; }
 
-/* ─── Damage Float ─── */
+/* ═══ Damage Float ═══ */
 .dmg-float {
   position: absolute; font-size: 20px; font-weight: bold;
   color: #ffd84a;
@@ -255,7 +310,7 @@ body {
   animation: dmgUp 1s ease-out forwards;
   z-index: 20;
 }
-.dmg-float.heal { color: #40e8e0; text-shadow: 0 2px 3px rgba(0,0,0,0.8), 0 0 6px rgba(64,232,224,0.35); }
+.dmg-float.heal { color: #50ffd0; text-shadow: 0 2px 3px rgba(0,0,0,0.8), 0 0 6px rgba(64,232,224,0.35); }
 @keyframes dmgUp {
   0% { opacity:1; transform:translateY(0) scale(1.15); }
   50% { opacity:1; transform:translateY(-35px) scale(1); }
