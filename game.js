@@ -110,7 +110,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=24';  // cache buster — increment to force reload
+    const V = 'v=25';  // cache buster — increment to force reload
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
