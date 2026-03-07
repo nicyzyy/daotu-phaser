@@ -3,7 +3,7 @@
 import json, base64, os, time, subprocess, shutil
 from urllib.request import Request, urlopen
 
-KEY = "REDACTED"
+KEY = os.environ.get("GEMINI_API_KEY", "")
 MODEL = "gemini-2.5-flash-image"
 URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={KEY}"
 OUT = "/home/node/.openclaw/workspace/daotu-phaser/assets/sprites/poses"
