@@ -110,13 +110,14 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('battle_bg', 'assets/bg/battle_bg.png');
+    const V = 'v=24';  // cache buster — increment to force reload
+    this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
-        this.load.image(`${folder}_${pose}_left`, `assets/sprites/poses/${folder}/${pose}_left.png`);
-        this.load.image(`${folder}_${pose}_right`, `assets/sprites/poses/${folder}/${pose}_right.png`);
+        this.load.image(`${folder}_${pose}_left`, `assets/sprites/poses/${folder}/${pose}_left.png?${V}`);
+        this.load.image(`${folder}_${pose}_right`, `assets/sprites/poses/${folder}/${pose}_right.png?${V}`);
       }
-      this.load.image(`${folder}_portrait`, `assets/sprites/portraits/${folder}.png`);
+      this.load.image(`${folder}_portrait`, `assets/sprites/portraits/${folder}.png?${V}`);
     }
   }
 
