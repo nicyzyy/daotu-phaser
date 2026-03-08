@@ -1,16 +1,29 @@
 /* ═══════════════════════════════════════════════════════
-   道途 — Phaser 3 ATB 战斗系统 V3 (增强动画版)
+   道途 — Phaser 3 AP战斗系统 V4 (AP行动点+五行克制+状态效果)
    ═══════════════════════════════════════════════════════ */
 
 // ─── Data Classes ───
 class SkillData {
-  constructor(name, desc, mpCost, power, targetType = 'single', damageType = 'physical') {
+  constructor(name, desc, apCost, mpCost, power, targetType = 'single', damageType = 'physical', element = '无', effects = []) {
     this.name = name;
     this.desc = desc;
+    this.apCost = apCost;
     this.mpCost = mpCost;
     this.power = power;
     this.targetType = targetType;
     this.damageType = damageType;
+    this.element = element;
+    this.effects = effects; // 状态效果数组
+  }
+}
+
+class StatusEffect {
+  constructor(name, type, duration, stacks = 1, icon = '•') {
+    this.name = name;
+    this.type = type; // 'buff' or 'debuff'
+    this.duration = duration;
+    this.stacks = stacks;
+    this.icon = icon;
   }
 }
 
@@ -25,9 +38,13 @@ class BattleUnit {
     this.agility = stats.agility;
     this.spirit = stats.spirit;
     this.realm = stats.realm || '';
+    this.element = stats.element || '无';
     this.skills = stats.skills || [];
     this.atb = 0;
     this.isDead = false;
+    this.maxAp = stats.maxAp || 3;
+    this.ap = 0;
+    this.statusEffects = [];
   }
   getAtbSpeed() { return 1.0 + this.agility / 100.0; }
   takeDamage(dmg) {
@@ -40,6 +57,69 @@ class BattleUnit {
     if (this.mp >= cost) { this.mp -= cost; return true; }
     return false;
   }
+  addStatus(name, type, duration, stacks = 1, icon = '•') {
+    const existing = this.statusEffects.find(s => s.name === name);
+    if (existing) {
+      existing.stacks += stacks;
+      existing.duration = Math.max(existing.duration, duration);
+    } else {
+      this.statusEffects.push(new StatusEffect(name, type, duration, stacks, icon));
+    }
+  }
+  hasStatus(name) {
+    return this.statusEffects.some(s => s.name === name);
+  }
+  removeStatus(name) {
+    this.statusEffects = this.statusEffects.filter(s => s.name !== name);
+  }
+  tickStatusEffects(scene) {
+    // 持续伤害/治疗
+    for (const s of this.statusEffects) {
+      if (s.name === '中毒') {
+        const dmg = Math.ceil(this.maxHp * 0.03 * s.stacks);
+        this.hp = Math.max(0, this.hp - dmg);
+        UI.log(`${this.name} 受到中毒伤害 ${dmg}`, 'skill');
+        UI.floatDmg(scene, this.name, dmg);
+      } else if (s.name === '剧毒') {
+        const dmg = Math.ceil(this.maxHp * 0.06 * s.stacks);
+        this.hp = Math.max(0, this.hp - dmg);
+        UI.log(`${this.name} 受到剧毒伤害 ${dmg}`, 'skill');
+        UI.floatDmg(scene, this.name, dmg);
+      } else if (s.name === '出血') {
+        const dmg = Math.ceil(this.maxHp * 0.04 * s.stacks);
+        this.hp = Math.max(0, this.hp - dmg);
+        UI.log(`${this.name} 受到出血伤害 ${dmg}`, 'skill');
+        UI.floatDmg(scene, this.name, dmg);
+      } else if (s.name === '灼烧') {
+        const dmg = Math.ceil(this.maxHp * 0.05 * s.stacks);
+        this.hp = Math.max(0, this.hp - dmg);
+        UI.log(`${this.name} 受到灼烧伤害 ${dmg}`, 'skill');
+        UI.floatDmg(scene, this.name, dmg);
+      } else if (s.name === '再生') {
+        const heal = Math.ceil(this.maxHp * 0.05 * s.stacks);
+        this.hp = Math.min(this.maxHp, this.hp + heal);
+        UI.log(`${this.name} 再生恢复 ${heal} 生命`, 'heal');
+        UI.floatDmg(scene, this.name, heal, true);
+      }
+    }
+    
+    // 减少持续时间，移除过期效果
+    this.statusEffects = this.statusEffects.filter(s => {
+      s.duration--;
+      return s.duration > 0;
+    });
+
+    if (this.hp <= 0 && !this.isDead) {
+      this.isDead = true;
+      UI.log(`[亡] ${this.name} 被击败了！`, 'kill');
+      scene.time.delayedCall(300, () => {
+        if (!scene.defeatedSet.has(this.name)) {
+          scene.defeatedSet.add(this.name);
+          scene._animDefeat(this.name);
+        }
+      });
+    }
+  }
 }
 
 // ─── Config ───
@@ -51,31 +131,50 @@ const SPRITE_MAP = {
 };
 
 const SKILL_ICONS = {
-  '御剑术': '⚔️', '万剑归宗': '🗡️', '聚灵诀': '💠',
-  '灵火术': '🔥', '天火焚原': '🌋', '回春术': '🌿',
-  '袖中刃': '🗡️', '毒舞天罗': '💃', '媚术': '💋',
-  '冰锥术': '❄️', '暴风雪': '🌨️', '冰盾术': '🛡️',
-  '灵草术': '🌱', '万灵回春': '🌸', '净化术': '✨',
+  '普通攻击': '⚔️',
+  '破风剑': '⚔️', '三叠剑意': '🗡️', '万剑归宗': '⚡',
+  '袖中刃': '🗡️', '毒舞天罗': '💃', '媚术': '💋', '蚀骨销魂': '☠️',
+  '寒冰针': '❄️', '霜锁脉门': '🧊', '冰棺之术': '🔒', '碎冰爆': '💥',
+  '灵泉术': '🌿', '生生诀': '🌸', '易伤咒': '👁️', '加速灵阵': '⚡', '天地归元': '☯️',
+  '散毒粉': '☁️', '回春丹': '💊', '以毒攻毒': '⚗️', '灵丹妙药': '✨', '万毒归一': '☠️',
+  '防御': '🛡️',
 };
 
-// ─── 纵列站位系统 ───
-// 支持双方各 5 人，分前排(2)和后排(3)
-// 我方在左侧面向右，敌方在右侧面向左
-// row: 'front'=前排(靠中间), 'back'=后排(靠边)
-const CHAR_HEIGHT = 200; // 所有角色统一显示高度(CSS px) — 加大确保2K清晰
+const STATUS_ICONS = {
+  '破甲': '🔻', '灼烧': '🔥', '冰缓': '❄️', '冻结': '🧊', '封脉': '🚫',
+  '剑意': '⚔️', '出血': '💢', '中毒': '☠️', '剧毒': '☠️', '心神不宁': '💫',
+  '魅惑': '💋', '虚弱': '😵', '再生': '💚', '易伤': '👁️', '沉默': '🔇',
+};
 
-// 我方站位 (左侧) — 角色更靠中间，战场感更强
+// ─── 五行克制系统 ───
+function getElementMultiplier(attackElement, targetElement) {
+  if (attackElement === '无' || targetElement === '无') return 1.0;
+  if (attackElement === targetElement) return 1.0;
+  
+  const counterMap = {
+    '金': '木',
+    '木': '土',
+    '土': '水',
+    '水': '火',
+    '火': '金',
+  };
+  
+  if (counterMap[attackElement] === targetElement) return 1.5; // 克制
+  if (counterMap[targetElement] === attackElement) return 0.75; // 被克
+  return 1.0;
+}
+
+// ─── 纵列站位系统 ───
+const CHAR_HEIGHT = 200;
+
 const ALLY_SLOTS = [
-  // 前排 (靠中间)
   { x: 0.30, y: 0.40, row: 'front' },
   { x: 0.28, y: 0.56, row: 'front' },
-  // 后排
   { x: 0.16, y: 0.33, row: 'back' },
   { x: 0.14, y: 0.48, row: 'back' },
   { x: 0.16, y: 0.63, row: 'back' },
 ];
 
-// 敌方站位 (右侧)
 const ENEMY_SLOTS = [
   { x: 0.70, y: 0.40, row: 'front' },
   { x: 0.72, y: 0.56, row: 'front' },
@@ -85,8 +184,6 @@ const ENEMY_SLOTS = [
 ];
 
 const GW = 1280, GH = 720;
-// HiDPI: 确保 2K+ 显示器上清晰渲染
-// Windows 2K 屏幕 devicePixelRatio 常为1，但实际需要2倍渲染
 const screenDPR = window.devicePixelRatio || 1;
 const screenScale = Math.max(window.screen.width / GW, window.screen.height / GH);
 const DPR = Math.min(Math.max(2, Math.ceil(screenDPR), Math.ceil(screenScale)), 4);
@@ -107,10 +204,12 @@ class BattleScene extends Phaser.Scene {
     this.battleActive = false;
     this.defeatedSet = new Set();
     this.atbSpeed = 30;
+    this.actionQueue = []; // 技能队列
+    this.isExecuting = false; // 是否正在执行技能队列
   }
 
   preload() {
-    const V = 'v=30';  // cache buster — increment to force reload
+    const V = 'v=31';  // cache buster
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -122,17 +221,12 @@ class BattleScene extends Phaser.Scene {
   }
 
   create() {
-    // ─── Dynamic Background System ───
-    // BG cover (render space = RW×RH)
     const bg = this.add.image(RW / 2, RH / 2, 'battle_bg');
     const src = this.textures.get('battle_bg').getSourceImage();
     bg.setScale(Math.max(RW / src.width, RH / src.height)).setDepth(-10);
-    // Slow parallax drift
     this.tweens.add({ targets: bg, x: { from: RW / 2 - 6 * DPR, to: RW / 2 + 6 * DPR }, duration: 12000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    // ─── Ambient Particles ───
     this._createAmbientEffects();
-
     this._createUnits();
     this._spawnSprites();
     this._buildATB();
@@ -141,9 +235,7 @@ class BattleScene extends Phaser.Scene {
     UI.log('[战] 战斗开始!', 'system');
   }
 
-  // ─── Ambient Scene Effects ───
   _createAmbientEffects() {
-    // 1. Floating qi particles (gentle drifting lights)
     this.time.addEvent({
       delay: 800, loop: true,
       callback: () => {
@@ -166,7 +258,6 @@ class BattleScene extends Phaser.Scene {
       }
     });
 
-    // 2. Ground mist layers (horizontal scrolling fog)
     for (let i = 0; i < 3; i++) {
       const mistY = RH * (0.75 + i * 0.08);
       const mist = this.add.rectangle(RW / 2, mistY, RW * 1.5, 30 * DPR, 0xccddee, 0.04 + i * 0.02).setDepth(-4 + i);
@@ -178,7 +269,6 @@ class BattleScene extends Phaser.Scene {
       });
     }
 
-    // 3. Occasional energy spark bursts (random positions)
     this.time.addEvent({
       delay: 3000, loop: true,
       callback: () => {
@@ -199,15 +289,14 @@ class BattleScene extends Phaser.Scene {
       }
     });
 
-    // 4. Vignette overlay (darkened edges)
     const vig = this.add.graphics().setDepth(-1);
     vig.fillStyle(0x000000, 0.3);
-    vig.fillRect(0, 0, RW, 40 * DPR); // top
-    vig.fillRect(0, RH - 30 * DPR, RW, 30 * DPR); // bottom
+    vig.fillRect(0, 0, RW, 40 * DPR);
+    vig.fillRect(0, RH - 30 * DPR, RW, 30 * DPR);
   }
 
   update(_, delta) {
-    if (!this.battleActive || this.isWaiting) return;
+    if (!this.battleActive || this.isWaiting || this.isExecuting) return;
 
     for (const u of this.allUnits) {
       if (!u.isDead) u.atb += u.getAtbSpeed() * this.atbSpeed * delta * 0.001;
@@ -222,8 +311,25 @@ class BattleScene extends Phaser.Scene {
     if (best) {
       best.atb = 0;
       this.currentUnit = best;
+      
+      // 回合开始：恢复AP，结算状态效果
+      best.ap = best.maxAp;
+      best.tickStatusEffects(this);
+      UI.refreshStatusIcons(best.name, best.statusEffects);
+      this._refreshHP();
+      
+      // 检查冻结状态
+      if (best.hasStatus('冻结')) {
+        UI.log(`${best.name} 被冻结，无法行动！`, 'system');
+        best.removeStatus('冻结');
+        UI.refreshStatusIcons(best.name, best.statusEffects);
+        return;
+      }
+      
       if (best.isPlayer) {
         this.isWaiting = true;
+        this.actionQueue = [];
+        UI.updateActionQueue([]);
         UI.showAction(this, best);
         const sp = this.sprites[best.name];
         if (sp) this.tweens.add({ targets: sp, alpha: { from: 1, to: 0.6 }, duration: 150, yoyo: true, repeat: 2 });
@@ -238,79 +344,116 @@ class BattleScene extends Phaser.Scene {
     this.playerUnits = [
       new BattleUnit('云逸', true, {
         hp: 120, mp: 60, attack: 20, defense: 8, agility: 75, spirit: 10, realm: '炼气期九层',
+        element: '金', maxAp: 3,
         skills: [
-          new SkillData('御剑术', '剑气斩击单体', 10, 25, 'single', 'physical'),
-          new SkillData('万剑归宗', '剑雨攻击全体', 25, 15, 'all', 'magical'),
-          new SkillData('聚灵诀', '恢复自身生命', 15, 30, 'self', 'heal'),
-        ]
-      }),
-      new BattleUnit('灵溪', true, {
-        hp: 90, mp: 100, attack: 10, defense: 6, agility: 55, spirit: 25, realm: '炼气期七层',
-        skills: [
-          new SkillData('灵火术', '灵火灼烧单体', 12, 30, 'single', 'magical'),
-          new SkillData('天火焚原', '烈焰焚烧全体', 30, 20, 'all', 'magical'),
-          new SkillData('回春术', '恢复自身生命', 18, 40, 'self', 'heal'),
+          new SkillData('破风剑', '剑气破甲', 1, 5, 80, 'single', 'physical', '金', [
+            { type: 'debuff', name: '破甲', duration: 3 }
+          ]),
+          new SkillData('三叠剑意', '三重剑意斩击', 2, 15, 150, 'single', 'physical', '金', [
+            { type: 'self', name: '剑意', duration: 99, stacks: 1 }
+          ]),
+          new SkillData('万剑归宗', '万剑齐发', 4, 40, 200, 'all', 'magical', '金', []),
         ]
       }),
       new BattleUnit('红袖', true, {
         hp: 90, mp: 50, attack: 26, defense: 4, agility: 92, spirit: 10, realm: '炼气期九层',
+        element: '毒', maxAp: 3,
         skills: [
-          new SkillData('袖中刃', '暗器穿刺单体', 8, 32, 'single', 'physical'),
-          new SkillData('毒舞天罗', '毒雾旋舞全体', 20, 18, 'all', 'physical'),
-          new SkillData('媚术', '魅惑降低防御', 12, 0, 'self', 'buff'),
+          new SkillData('袖中刃', '暗器穿刺', 1, 8, 32, 'single', 'physical', '物理', [
+            { type: 'debuff', name: '出血', duration: 2, chance: 0.5 }
+          ]),
+          new SkillData('毒舞天罗', '毒雾旋舞', 2, 20, 18, 'all', 'magical', '木', [
+            { type: 'debuff', name: '剧毒', duration: 2 }
+          ]),
+          new SkillData('媚术', '魅惑降低命中', 1, 12, 0, 'single', 'debuff', '无', [
+            { type: 'debuff', name: '心神不宁', duration: 3 }
+          ]),
+          new SkillData('蚀骨销魂', '剧毒连击', 3, 30, 200, 'single', 'magical', '毒', [
+            { type: 'debuff', name: '沉默', duration: 2, condition: ['剧毒', '心神不宁'] }
+          ]),
+        ]
+      }),
+      new BattleUnit('灵溪', true, {
+        hp: 90, mp: 100, attack: 10, defense: 6, agility: 55, spirit: 25, realm: '炼气期七层',
+        element: '水', maxAp: 3,
+        skills: [
+          new SkillData('寒冰针', '冰锥刺穿', 1, 6, 70, 'single', 'magical', '水', [
+            { type: 'debuff', name: '冰缓', duration: 2, chance: 0.2 }
+          ]),
+          new SkillData('霜锁脉门', '封锁灵脉', 2, 18, 100, 'single', 'magical', '水', [
+            { type: 'debuff', name: '封脉', duration: 2 }
+          ]),
+          new SkillData('冰棺之术', '冰冻敌人', 3, 30, 0, 'single', 'debuff', '水', [
+            { type: 'debuff', name: '冻结', duration: 1, requireStatus: '冰缓' }
+          ]),
+          new SkillData('碎冰爆', '碎冰溅射', 1, 12, 250, 'single', 'magical', '水', [
+            { type: 'splash', ratio: 0.5, requireStatus: '冻结' }
+          ]),
         ]
       }),
       new BattleUnit('雪蔷薇', true, {
         hp: 85, mp: 110, attack: 8, defense: 5, agility: 55, spirit: 30, realm: '炼气期八层',
+        element: '木', maxAp: 3,
         skills: [
-          new SkillData('冰锥术', '冰锥刺穿单体', 12, 32, 'single', 'magical'),
-          new SkillData('暴风雪', '冰暴攻击全体', 28, 20, 'all', 'magical'),
-          new SkillData('冰盾术', '冰盾保护自身', 15, 0, 'self', 'buff'),
+          new SkillData('灵泉术', '治愈术', 1, 10, 60, 'single_ally', 'heal', '木', []),
+          new SkillData('生生诀', '再生术', 2, 25, 80, 'single_ally', 'heal', '木', [
+            { type: 'buff', name: '再生', duration: 3 }
+          ]),
+          new SkillData('易伤咒', '降低防御', 1, 15, 0, 'single', 'debuff', '无', [
+            { type: 'debuff', name: '易伤', duration: 2 }
+          ]),
+          new SkillData('加速灵阵', '增加行动点', 2, 20, 0, 'single_ally', 'buff', '无', [
+            { type: 'ap_boost', amount: 2 }
+          ]),
+          new SkillData('天地归元', '群体治疗', 4, 50, 40, 'all_ally', 'heal', '木', [
+            { type: 'cleanse', count: 1 }
+          ]),
         ]
       }),
       new BattleUnit('药仙', true, {
         hp: 100, mp: 120, attack: 6, defense: 7, agility: 45, spirit: 30, realm: '炼气期七层',
+        element: '木', maxAp: 3,
         skills: [
-          new SkillData('灵草术', '灵草治愈单体', 10, 40, 'single_ally', 'heal'),
-          new SkillData('万灵回春', '全体回复', 35, 25, 'all_ally', 'heal'),
-          new SkillData('净化术', '净化异常状态', 15, 0, 'single_ally', 'buff'),
+          new SkillData('散毒粉', '毒雾散播', 1, 8, 50, 'all', 'magical', '木', [
+            { type: 'debuff', name: '中毒', duration: 3, chance: 0.4 }
+          ]),
+          new SkillData('回春丹', '治疗解毒', 1, 12, 30, 'single_ally', 'heal', '木', [
+            { type: 'cleanse', poison: true }
+          ]),
+          new SkillData('以毒攻毒', '毒伤加倍', 2, 18, 0, 'single', 'debuff', '毒', [
+            { type: 'debuff', name: '虚弱', duration: 2, requireStatus: '中毒' }
+          ]),
+          new SkillData('灵丹妙药', '随机增益', 2, 25, 0, 'single_ally', 'buff', '无', [
+            { type: 'random_buff' }
+          ]),
+          new SkillData('万毒归一', '消耗全场毒层', 3, 35, 0, 'all', 'magical', '毒', [
+            { type: 'consume_poison' }
+          ]),
         ]
       }),
     ];
     this.enemyUnits = [
       new BattleUnit('妖狼', false, {
         hp: 80, mp: 20, attack: 15, defense: 5, agility: 65, spirit: 5,
+        element: '无', maxAp: 3,
         skills: [
-          new SkillData('狂嗥', '群体嘶吼降低防御', 10, 12, 'all', 'physical'),
-          new SkillData('噬咬', '猛烈撕咬单体', 5, 22, 'single', 'physical'),
+          new SkillData('狂嗥', '群体嘶吼', 2, 10, 12, 'all', 'physical', '无', []),
+          new SkillData('噬咬', '猛烈撕咬', 1, 5, 22, 'single', 'physical', '无', []),
         ]
       }),
       new BattleUnit('毒蝎精', false, {
         hp: 60, mp: 30, attack: 18, defense: 3, agility: 80, spirit: 12,
+        element: '毒', maxAp: 3,
         skills: [
-          new SkillData('毒雾', '毒气弥漫全体', 15, 15, 'all', 'magical'),
-          new SkillData('蝎尾刺', '剧毒穿刺单体', 8, 28, 'single', 'magical'),
+          new SkillData('毒雾', '毒气弥漫', 2, 15, 15, 'all', 'magical', '毒', []),
+          new SkillData('蝎尾刺', '剧毒穿刺', 1, 8, 28, 'single', 'magical', '毒', []),
         ]
       }),
       new BattleUnit('石魔', false, {
         hp: 150, mp: 10, attack: 22, defense: 15, agility: 30, spirit: 3,
+        element: '土', maxAp: 3,
         skills: [
-          new SkillData('地裂', '大地震动全体', 10, 18, 'all', 'physical'),
-        ]
-      }),
-      new BattleUnit('九尾妖狐', false, {
-        hp: 110, mp: 60, attack: 20, defense: 6, agility: 85, spirit: 22,
-        skills: [
-          new SkillData('狐火', '九尾狐火灼烧单体', 12, 30, 'single', 'magical'),
-          new SkillData('魅惑', '妖术攻击全体', 25, 18, 'all', 'magical'),
-          new SkillData('妖力回复', '恢复自身生命', 15, 30, 'self', 'heal'),
-        ]
-      }),
-      new BattleUnit('幽冥鬼王', false, {
-        hp: 200, mp: 40, attack: 25, defense: 18, agility: 40, spirit: 15,
-        skills: [
-          new SkillData('鬼哭', '幽冥鬼火全体', 20, 20, 'all', 'magical'),
-          new SkillData('锁魂链', '锁链束缚单体', 10, 35, 'single', 'physical'),
+          new SkillData('地裂', '大地震动', 2, 10, 18, 'all', 'physical', '土', []),
         ]
       }),
     ];
@@ -318,9 +461,8 @@ class BattleScene extends Phaser.Scene {
     for (const u of this.allUnits) u.atb = Math.random() * 20 + u.agility * 0.3;
   }
 
-  // ─── Sprites ───
+  // ─── Sprites (保持原有代码) ───
   _spawnSprites() {
-    // Assign slots: allies use ALLY_SLOTS, enemies use ENEMY_SLOTS
     let allyIdx = 0, enemyIdx = 0;
     for (const u of this.allUnits) {
       const folder = SPRITE_MAP[u.name];
@@ -333,10 +475,9 @@ class BattleScene extends Phaser.Scene {
       const dir = u.isPlayer ? 'right' : 'left';
       const sp = this.add.image(RW * slot.x, RH * slot.y, `${folder}_idle_${dir}`);
       const texH = sp.texture.getSourceImage().height;
-      const sc = (CHAR_HEIGHT * DPR) / texH;  // 统一高度
+      const sc = (CHAR_HEIGHT * DPR) / texH;
       sp.setOrigin(0.5, 0.5);
       sp.setScale(sc);
-      // Depth: 后排在前排后面 (y 越大越靠前)
       sp.setDepth(Math.floor(RH * slot.y));
       sp.setData('folder', folder);
       sp.setData('dir', dir);
@@ -370,17 +511,14 @@ class BattleScene extends Phaser.Scene {
     const sp = this.sprites[name], bp = this.basePos[name];
     if (!sp) return;
 
-    // 我方角色血量 < 1/4 时：保持 idle 姿势 + 红色闪烁 + 颤抖
     if (u && u.isPlayer && u.hp > 0 && u.hp <= u.maxHp * 0.25) {
-      this._pose(name, 'idle');  // 保持 idle 姿势，避免 hit 姿势的 AI 瑕疵
+      this._pose(name, 'idle');
       sp.setAlpha(1).setAngle(0).setPosition(bp.x, bp.y);
       const sc = sp.getData('sc');
       sp.setScale(sc);
       this.tweens.killTweensOf(sp);
-      // 颤抖动画（比正常 idle 更快更大幅度）
       this.tweens.add({ targets: sp, x: { from: bp.x - 3, to: bp.x + 3 }, duration: 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       this.tweens.add({ targets: sp, y: { from: bp.y - 2, to: bp.y + 4 }, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-      // 红色闪烁（周期性亮暗）
       this.tweens.add({ targets: sp, alpha: { from: 1.0, to: 0.6 }, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       sp.setTint(0xff8888);
       return;
@@ -394,34 +532,27 @@ class BattleScene extends Phaser.Scene {
     this._idleAnim(name);
   }
 
-  // ─── Enhanced Animations V3 ───
-
-  // 📸 Screen shake
+  // ─── Enhanced Animations (保持原有代码) ───
   _shake(intensity = 6, dur = 150) {
     this.cameras.main.shake(dur, intensity / 1000);
   }
 
-  // ⚡ Flash overlay
   _flash(color = 0xffffff, dur = 80) {
     this.cameras.main.flash(dur, (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff, true);
   }
 
-  // ─── ATTACK (melee) ───
   _animAttack(atk, tgt) {
     const sp = this.sprites[atk], bp = this.basePos[atk], tbp = this.basePos[tgt];
     if (!sp) return;
     this.tweens.killTweensOf(sp);
     this._pose(atk, 'attack');
 
-    // Wind-up: slight pullback + squeeze
     const dir = tbp.x > bp.x ? 1 : -1;
     const sc = sp.getData('sc');
     this.tweens.chain({
       targets: sp,
       tweens: [
-        // 1) Pull back & squeeze
         { x: bp.x - dir * 15 * DPR, scaleX: sc * 0.92, scaleY: sc * 1.06, duration: 100, ease: 'Quad.easeOut' },
-        // 2) Dash forward (close to target)
         { x: tbp.x - dir * 60 * DPR, scaleX: sc * 1.08, scaleY: sc * 0.95, duration: 120, ease: 'Back.easeIn',
           onComplete: () => {
             this._fxSlash(tgt);
@@ -431,9 +562,7 @@ class BattleScene extends Phaser.Scene {
             this._flash(0xffffff, 60);
           }
         },
-        // 3) Overshoot slightly
         { x: tbp.x - dir * 80 * DPR, duration: 60, ease: 'Quad.easeOut' },
-        // 4) Return to base
         { x: bp.x, scaleX: sc, scaleY: sc, duration: 300, ease: 'Cubic.easeOut',
           onComplete: () => this._resetIdle(atk)
         },
@@ -441,13 +570,11 @@ class BattleScene extends Phaser.Scene {
     });
   }
 
-  // ⚔️ Enhanced slash FX: multiple slash arcs + sparks
   _fxSlash(tgt) {
     const sp = this.sprites[tgt];
     if (!sp) return;
     const cx = sp.x, cy = sp.y - 30 * DPR;
 
-    // Main slash arcs (cyan sword energy)
     for (let i = 0; i < 5; i++) {
       const w = (35 + i * 8) * DPR, h = 2 * DPR;
       const s = this.add.rectangle(cx - 10 * DPR + i * 8 * DPR, cy - i * 14 * DPR, w, h, 0x60ddff, 0.9)
@@ -456,7 +583,6 @@ class BattleScene extends Phaser.Scene {
         ease: 'Quad.easeOut', onComplete: () => s.destroy() });
     }
 
-    // Sparks
     for (let i = 0; i < 10; i++) {
       const a = Math.random() * Math.PI * 2;
       const speed = 20 + Math.random() * 40;
@@ -475,13 +601,11 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
-  // 💥 Impact burst at target
   _fxImpactBurst(tgt) {
     const sp = this.sprites[tgt];
     if (!sp) return;
     const cx = sp.x, cy = sp.y;
 
-    // Expanding ring
     const ring = this.add.circle(cx, cy, 5 * DPR, 0xffffff, 0.7).setDepth(998);
     ring.setStrokeStyle(2 * DPR, 0xffdd44);
     this.tweens.add({
@@ -490,7 +614,6 @@ class BattleScene extends Phaser.Scene {
     });
   }
 
-  // ─── HIT reaction ───
   _animHit(tgt) {
     const sp = this.sprites[tgt], bp = this.basePos[tgt];
     if (!sp) return;
@@ -499,7 +622,6 @@ class BattleScene extends Phaser.Scene {
     sp.setTint(0xff3333);
 
     const sc = sp.getData('sc');
-    // Violent shake + knockback
     this.tweens.chain({
       targets: sp,
       tweens: [
@@ -515,7 +637,6 @@ class BattleScene extends Phaser.Scene {
         },
       ]
     });
-    // Safety fallback: clear tint after max animation time in case chain gets interrupted
     this.time.delayedCall(500, () => {
       if (sp.tintTopLeft !== 0xffffff) { sp.clearTint(); }
     });
@@ -528,7 +649,6 @@ class BattleScene extends Phaser.Scene {
     });
   }
 
-  // ─── DEFEAT ───
   _animDefeat(name) {
     const sp = this.sprites[name];
     if (!sp) return;
@@ -542,20 +662,16 @@ class BattleScene extends Phaser.Scene {
     const baseY = sp.y;
 
     if (isAlly) {
-      // ─── 我方：倒下，不变形不半透明 ───
       this.tweens.chain({
         targets: sp,
         tweens: [
           { alpha: 0.7, duration: 80, yoyo: true, repeat: 1 },
-          // 只旋转+下移，不缩放，保持原始比例
           { y: baseY + 25 * DPR, angle: -25,
             alpha: 1.0, duration: 700, ease: 'Bounce.easeOut' },
         ]
       });
-      // Grey out in side panel
       UI.hideOverhead(name);
     } else {
-      // ─── 敌方：倒下后消失 ───
       this.tweens.chain({
         targets: sp,
         tweens: [
@@ -568,7 +684,6 @@ class BattleScene extends Phaser.Scene {
         ]
       });
 
-      // Death particles (soul wisps) - only for enemies
       this.time.delayedCall(300, () => {
         for (let i = 0; i < 10; i++) {
           const a = Math.random() * Math.PI * 2;
@@ -590,7 +705,6 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
-  // ─── CAST (magical / skill) ───
   _animCast(caster, tgt) {
     const sp = this.sprites[caster], bp = this.basePos[caster];
     if (!sp) return;
@@ -598,13 +712,11 @@ class BattleScene extends Phaser.Scene {
     this._pose(caster, 'cast');
 
     const sc = sp.getData('sc');
-    // Charge-up: glow + scale pulse
     sp.setTint(0xddbbff);
     this.tweens.add({
       targets: sp, scaleX: sc * 1.08, scaleY: sc * 1.08, duration: 200, yoyo: true, ease: 'Sine.easeInOut',
     });
 
-    // Charging particles around caster
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
       const r = 40 * DPR;
@@ -619,7 +731,6 @@ class BattleScene extends Phaser.Scene {
       });
     }
 
-    // Release: projectile or burst at target
     this.time.delayedCall(350, () => {
       this._fxMagicProjectile(sp.x, sp.y, this.sprites[tgt]);
       this.time.delayedCall(250, () => {
@@ -632,13 +743,11 @@ class BattleScene extends Phaser.Scene {
     });
   }
 
-  // 🔥 Magic projectile: energy ball flying from caster to target
   _fxMagicProjectile(fromX, fromY, targetSp) {
     if (!targetSp) return;
     const ball = this.add.circle(fromX, fromY - 20 * DPR, 6 * DPR, 0xff6600, 1).setDepth(999);
     const glow = this.add.circle(fromX, fromY - 20 * DPR, 12 * DPR, 0xff8833, 0.3).setDepth(998);
 
-    // Trail particles
     const trail = this.time.addEvent({
       delay: 30, repeat: 8,
       callback: () => {
@@ -655,17 +764,14 @@ class BattleScene extends Phaser.Scene {
     });
   }
 
-  // 🔥 Enhanced fire explosion
   _fxFireExplosion(tgt) {
     const sp = this.sprites[tgt];
     if (!sp) return;
     const cx = sp.x, cy = sp.y;
 
-    // Central flash
     const flash = this.add.circle(cx, cy, 8 * DPR, 0xffaa00, 0.9).setDepth(999);
     this.tweens.add({ targets: flash, scaleX: 5, scaleY: 5, alpha: 0, duration: 300, onComplete: () => flash.destroy() });
 
-    // Fire particles (outward burst)
     for (let i = 0; i < 14; i++) {
       const a = Math.random() * Math.PI * 2;
       const speed = 25 + Math.random() * 45;
@@ -676,7 +782,7 @@ class BattleScene extends Phaser.Scene {
       this.tweens.add({
         targets: p,
         x: cx + Math.cos(a) * speed * DPR,
-        y: cy + Math.sin(a) * speed * DPR - 15 * DPR, // drift upward
+        y: cy + Math.sin(a) * speed * DPR - 15 * DPR,
         alpha: 0, scaleX: 0.2, scaleY: 0.2,
         duration: 350 + Math.random() * 250,
         ease: 'Quad.easeOut',
@@ -684,7 +790,6 @@ class BattleScene extends Phaser.Scene {
       });
     }
 
-    // Smoke wisps
     for (let i = 0; i < 5; i++) {
       const s = this.add.circle(cx + Phaser.Math.Between(-15, 15) * DPR, cy, (4 + Math.random() * 6) * DPR, 0x333333, 0.4).setDepth(997);
       this.tweens.add({
@@ -695,7 +800,6 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
-  // ─── HEAL ───
   _animHeal(name) {
     const sp = this.sprites[name];
     if (!sp) return;
@@ -704,11 +808,9 @@ class BattleScene extends Phaser.Scene {
 
     const sc = sp.getData('sc');
 
-    // Green glow pulse
     sp.setTint(0x44ff66);
     this.tweens.add({ targets: sp, scaleX: sc * 1.05, scaleY: sc * 1.05, duration: 300, yoyo: true, ease: 'Sine.easeInOut' });
 
-    // Heal rune circle (rotating ring of particles)
     const cx = sp.x, cy = sp.y + 20 * DPR;
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2;
@@ -723,7 +825,6 @@ class BattleScene extends Phaser.Scene {
       });
     }
 
-    // Rising heal particles (leaves / sparkles)
     for (let i = 0; i < 15; i++) {
       const delay = i * 50;
       this.time.delayedCall(delay, () => {
@@ -749,7 +850,6 @@ class BattleScene extends Phaser.Scene {
   // ─── ATB Bar ───
   _buildATB() {
     const bar = document.getElementById('atb-bar');
-    // Clear any old icons
     bar.querySelectorAll('.atb-icon').forEach(e => e.remove());
     for (const u of this.allUnits) {
       const folder = SPRITE_MAP[u.name];
@@ -766,7 +866,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   _tickATB() {
-    const trackW = GW - 100; // CSS-space padding 50 each side
+    const trackW = GW - 100;
     for (const u of this.allUnits) {
       const el = document.getElementById(`atb-${u.name}`);
       if (!el) continue;
@@ -777,10 +877,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   // ─── Side Panel HP System ───
-  // Ally HP: left side panel, Enemy HP: right side panel
-  // Characters only get a tiny name tag floating above (no HP bar on battlefield)
   _buildOverhead() {
-    // Build side panels
     const allyPanel = document.getElementById('ally-panel');
     const enemyPanel = document.getElementById('enemy-panel');
     allyPanel.innerHTML = '';
@@ -805,11 +902,11 @@ class BattleScene extends Phaser.Scene {
         h += `<div class="sp-bar-wrap mp"><div class="sp-bar sp-mp" id="spf-mp-${u.name}"></div></div>`;
         h += `<div class="sp-nums mp" id="spt-mp-${u.name}">${u.mp}/${u.maxMp}</div>`;
       }
+      h += `<div class="sp-status" id="status-${u.name}"></div>`;
       h += `</div></div>`;
       el.innerHTML = h;
       panel.appendChild(el);
 
-      // Also create floating name tag on battlefield (tiny, no HP)
       const tag = document.createElement('div');
       tag.className = `name-tag tag-${side}`;
       tag.id = `tag-${u.name}`;
@@ -845,7 +942,6 @@ class BattleScene extends Phaser.Scene {
         if (mf) mf.style.width = `${(u.mp / u.maxMp) * 100}%`;
         if (mt) mt.textContent = `${u.mp}/${u.maxMp}`;
       }
-      // Highlight dead units
       const el = document.getElementById(`sp-${u.name}`);
       if (el) el.classList.toggle('dead', u.isDead);
     }
@@ -856,18 +952,14 @@ class BattleScene extends Phaser.Scene {
     const alive = this.playerUnits.filter(u => !u.isDead);
     if (!alive.length) { this._checkEnd(); return; }
 
-    // Smart targeting: prefer low HP targets
     const sorted = [...alive].sort((a, b) => a.hp - b.hp);
     const tgt = Math.random() < 0.6 ? sorted[0] : Phaser.Utils.Array.GetRandom(alive);
 
-    // 40% chance to use a skill if available and has MP
     if (unit.skills && unit.skills.length > 0 && Math.random() < 0.4) {
-      const usable = unit.skills.filter(sk => unit.mp >= sk.mpCost);
+      const usable = unit.skills.filter(sk => unit.mp >= sk.mpCost && unit.ap >= sk.apCost);
       if (usable.length > 0) {
         const sk = Phaser.Utils.Array.GetRandom(usable);
-        // Self heal when low HP
         if (sk.damageType === 'heal' && unit.hp > unit.maxHp * 0.5) {
-          // Don't heal if HP > 50%, just attack instead
           this._doAttack(unit, tgt);
           return;
         }
@@ -896,15 +988,17 @@ class BattleScene extends Phaser.Scene {
 
   _doSkill(atk, skill, tgt) {
     if (!atk.useMp(skill.mpCost)) { UI.log('灵力不足！'); return; }
+    
+    atk.ap -= skill.apCost;
+    
     let power = skill.power;
     if (skill.damageType === 'physical') power += atk.attack;
     else if (skill.damageType === 'magical') power += atk.spirit * 2;
 
     // ─── Heal skills ───
     if (skill.damageType === 'heal') {
-      const amt = power + atk.spirit;
+      const amt = Math.floor(power + atk.spirit * (skill.power / 100));
       if (skill.targetType === 'all_ally') {
-        // 全体治愈
         const allies = this.playerUnits.filter(u => !u.isDead);
         for (const a of allies) {
           a.hp = Math.min(a.maxHp, a.hp + amt);
@@ -912,16 +1006,37 @@ class BattleScene extends Phaser.Scene {
         }
         UI.log(`[灵] ${atk.name} 使用 ${skill.name}，全体恢复 ${amt} 生命！`, 'heal');
       } else if (skill.targetType === 'single_ally') {
-        // 单体治愈指定友军
         tgt.hp = Math.min(tgt.maxHp, tgt.hp + amt);
         UI.log(`[灵] ${atk.name} 使用 ${skill.name}，${tgt.name} 恢复 ${amt} 生命！`, 'heal');
         UI.floatDmg(this, tgt.name, amt, true);
       } else {
-        // self heal
         atk.hp = Math.min(atk.maxHp, atk.hp + amt);
         UI.log(`[灵] ${atk.name} 使用 ${skill.name}，恢复 ${amt} 生命！`, 'heal');
         UI.floatDmg(this, atk.name, amt, true);
       }
+      
+      // 应用技能效果
+      for (const eff of skill.effects) {
+        if (eff.type === 'buff') {
+          tgt.addStatus(eff.name, 'buff', eff.duration, 1, STATUS_ICONS[eff.name] || '•');
+          UI.refreshStatusIcons(tgt.name, tgt.statusEffects);
+        } else if (eff.type === 'cleanse') {
+          if (eff.poison) {
+            tgt.removeStatus('中毒');
+            tgt.removeStatus('剧毒');
+          } else if (eff.count) {
+            const debuffs = tgt.statusEffects.filter(s => s.type === 'debuff');
+            for (let i = 0; i < eff.count && debuffs.length > 0; i++) {
+              tgt.removeStatus(debuffs[0].name);
+            }
+          }
+          UI.refreshStatusIcons(tgt.name, tgt.statusEffects);
+        } else if (eff.type === 'ap_boost') {
+          tgt.ap += eff.amount;
+          UI.log(`${tgt.name} 获得 ${eff.amount} 行动点！`, 'heal');
+        }
+      }
+      
       this._animHeal(atk.name);
       this._refreshHP();
       this.isWaiting = false;
@@ -929,10 +1044,18 @@ class BattleScene extends Phaser.Scene {
       return;
     }
 
-    // ─── Buff skills ───
-    if (skill.damageType === 'buff') {
+    // ─── Buff/Debuff skills ───
+    if (skill.damageType === 'buff' || skill.damageType === 'debuff') {
       UI.log(`[灵] ${atk.name} 使用 ${skill.name}！`, 'skill');
-      this._animHeal(atk.name); // Use heal animation for buffs
+      
+      for (const eff of skill.effects) {
+        if (eff.type === 'buff' || eff.type === 'debuff') {
+          tgt.addStatus(eff.name, eff.type, eff.duration, eff.stacks || 1, STATUS_ICONS[eff.name] || '•');
+          UI.refreshStatusIcons(tgt.name, tgt.statusEffects);
+        }
+      }
+      
+      this._animHeal(atk.name);
       this._refreshHP();
       this.isWaiting = false;
       this.currentUnit = null;
@@ -945,16 +1068,63 @@ class BattleScene extends Phaser.Scene {
       : [tgt];
 
     for (const t of targets) {
-      const actual = t.takeDamage(power);
+      // 五行克制
+      const elementMul = getElementMultiplier(skill.element, t.element);
+      
+      // 剑意加成 (云逸)
+      let swordWillBonus = 1.0;
+      if (skill.name === '万剑归宗') {
+        const swordWill = atk.statusEffects.filter(s => s.name === '剑意');
+        if (swordWill.length > 0) {
+          swordWillBonus = 1.0 + swordWill[0].stacks * 0.2;
+        }
+      }
+      
+      // 易伤加成
+      let vulnBonus = 1.0;
+      if (t.hasStatus('易伤')) {
+        vulnBonus = 1.25;
+      }
+      
+      // 蚀骨销魂组合技
+      let comboBonus = 1.0;
+      if (skill.name === '蚀骨销魂' && t.hasStatus('剧毒') && t.hasStatus('心神不宁')) {
+        comboBonus = 2.5;
+      }
+      
+      const finalDmg = Math.floor(power * elementMul * swordWillBonus * vulnBonus * comboBonus);
+      const actual = t.takeDamage(finalDmg);
+      
       const tag = skill.targetType === 'all' ? '火' : '雷';
-      UI.log(`[${tag}] ${atk.name} 对 ${t.name} 使用 ${skill.name}，${actual} 伤害！`, 'skill');
+      let logMsg = `[${tag}] ${atk.name} 对 ${t.name} 使用 ${skill.name}，${actual} 伤害！`;
+      if (elementMul > 1.0) logMsg += ' (克制!)';
+      if (elementMul < 1.0) logMsg += ' (被克)';
+      UI.log(logMsg, 'skill');
+      
       this._animCast(atk.name, t.name);
       UI.floatDmg(this, t.name, actual);
+      
+      // 应用技能效果
+      for (const eff of skill.effects) {
+        if (eff.type === 'debuff') {
+          if (eff.chance && Math.random() > eff.chance) continue;
+          if (eff.requireStatus && !t.hasStatus(eff.requireStatus)) continue;
+          if (eff.condition && !eff.condition.every(s => t.hasStatus(s))) continue;
+          
+          t.addStatus(eff.name, 'debuff', eff.duration, eff.stacks || 1, STATUS_ICONS[eff.name] || '•');
+          UI.refreshStatusIcons(t.name, t.statusEffects);
+        } else if (eff.type === 'self') {
+          atk.addStatus(eff.name, 'buff', eff.duration, eff.stacks || 1, STATUS_ICONS[eff.name] || '•');
+          UI.refreshStatusIcons(atk.name, atk.statusEffects);
+        }
+      }
+      
       if (t.isDead) {
         UI.log(`[亡] ${t.name} 被击败了！`, 'kill');
         this.time.delayedCall(700, () => { if (!this.defeatedSet.has(t.name)) { this.defeatedSet.add(t.name); this._animDefeat(t.name); } });
       }
     }
+    
     this._refreshHP();
     this.isWaiting = false;
     this.currentUnit = null;
@@ -970,7 +1140,7 @@ class BattleScene extends Phaser.Scene {
 }
 
 // ═══════════════════════════════════════════════════════
-// UI Module — all DOM manipulation isolated here
+// UI Module
 // ═══════════════════════════════════════════════════════
 const UI = {
   log(text, type = '') {
@@ -979,7 +1149,6 @@ const UI = {
     d.className = `log-line ${type}`;
     d.textContent = text;
     c.appendChild(d);
-    // Keep max 30 lines
     while (c.children.length > 30) c.removeChild(c.firstChild);
     document.getElementById('battle-log').scrollTop = 99999;
   },
@@ -990,7 +1159,6 @@ const UI = {
     const el = document.createElement('div');
     el.className = 'dmg-float' + (heal ? ' heal' : '');
     el.textContent = heal ? `+${val}` : `-${val}`;
-    // Convert render coords to CSS coords
     const cx = sp.x / DPR, cy = sp.y / DPR;
     el.style.left = `${cx + Phaser.Math.Between(-8, 8)}px`;
     el.style.top = `${cy - (sp.displayHeight / DPR) / 2 - 10}px`;
@@ -1005,29 +1173,78 @@ const UI = {
     if (sp) sp.classList.add('dead');
   },
 
+  refreshStatusIcons(name, statusEffects) {
+    const container = document.getElementById(`status-${name}`);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    for (const s of statusEffects) {
+      const icon = document.createElement('span');
+      icon.className = `status-icon status-${s.type}`;
+      icon.textContent = s.icon;
+      icon.title = `${s.name} (${s.duration}回合)`;
+      if (s.stacks > 1) icon.textContent += s.stacks;
+      container.appendChild(icon);
+    }
+  },
+
   showAction(scene, unit) {
     const panel = document.getElementById('action-panel');
     const folder = SPRITE_MAP[unit.name];
-    // Use idle_right as half-body portrait in action panel
     document.getElementById('action-portrait').src = `assets/sprites/poses/${folder}/idle_right.png`;
-    document.getElementById('action-unit-name').textContent = `${unit.name} 的回合`;
+    document.getElementById('action-unit-name').innerHTML = `${unit.name} 的回合 <span class="ap-display">(AP: <span class="ap-dots" id="current-ap"></span>)</span>`;
+    UI.updateAPDisplay(unit.ap, unit.maxAp);
+    
     const bc = document.getElementById('action-buttons');
     bc.innerHTML = '';
 
-    // Attack btn
+    // 普通攻击
     const ab = document.createElement('button');
     ab.className = 'btn-xianxia';
-    ab.innerHTML = `<div class="btn-name">⚔ 普通攻击</div><div class="btn-stats">ATK:${unit.attack}  MP:0</div>`;
-    ab.onclick = () => { scene.selectedSkill = null; UI.showTargets(scene); };
+    ab.disabled = unit.ap < 1;
+    ab.innerHTML = `<div class="btn-name">⚔ 普通攻击</div><div class="btn-stats">AP:1  MP:0  ATK:${unit.attack}</div>`;
+    ab.onclick = () => {
+      scene.selectedSkill = null;
+      UI.showTargets(scene);
+    };
     bc.appendChild(ab);
 
-    // Skill btns
+    // 防御
+    const db = document.createElement('button');
+    db.className = 'btn-xianxia';
+    db.innerHTML = `<div class="btn-name">🛡️ 防御</div><div class="btn-stats">AP:全部  结束回合</div>`;
+    db.onclick = () => {
+      UI.log(`${unit.name} 进入防御姿态`, 'system');
+      panel.classList.add('hidden');
+      unit.ap = 0;
+      scene.isWaiting = false;
+      scene.currentUnit = null;
+    };
+    bc.appendChild(db);
+
+    // 技能
     for (const sk of unit.skills) {
       const b = document.createElement('button');
       b.className = 'btn-xianxia';
-      b.disabled = unit.mp < sk.mpCost;
+      b.disabled = unit.mp < sk.mpCost || unit.ap < sk.apCost;
+      
+      // 检查是否可以触发连击效果
+      let comboClass = '';
+      if (sk.name === '三叠剑意' && scene.enemyUnits.some(e => !e.isDead && e.hasStatus('破甲'))) {
+        comboClass = ' combo-ready';
+      }
+      if (sk.name === '蚀骨销魂' && scene.enemyUnits.some(e => !e.isDead && e.hasStatus('剧毒') && e.hasStatus('心神不宁'))) {
+        comboClass = ' combo-ready';
+      }
+      if (sk.name === '碎冰爆' && scene.enemyUnits.some(e => !e.isDead && e.hasStatus('冻结'))) {
+        comboClass = ' combo-ready';
+      }
+      
+      b.className += comboClass;
+      
       const ico = SKILL_ICONS[sk.name] || '🔮';
-      b.innerHTML = `<div class="btn-name">${ico} ${sk.name}</div><div class="btn-stats">ATK:${sk.power}  MP:${sk.mpCost}</div><div class="btn-desc">${sk.desc}</div>`;
+      const elementTag = sk.element !== '无' ? `<span class="element-tag">${sk.element}</span>` : '';
+      b.innerHTML = `<div class="btn-name">${ico} ${sk.name} ${elementTag}</div><div class="btn-stats">AP:${sk.apCost}  MP:${sk.mpCost}  威力:${sk.power}</div><div class="btn-desc">${sk.desc}</div>`;
       b.onclick = () => {
         scene.selectedSkill = sk;
         if (sk.targetType === 'self') { panel.classList.add('hidden'); scene._doSkill(unit, sk, unit); }
@@ -1038,7 +1255,54 @@ const UI = {
       };
       bc.appendChild(b);
     }
+    
+    // 结束回合按钮
+    const eb = document.createElement('button');
+    eb.className = 'btn-end-turn';
+    eb.textContent = '结束回合';
+    eb.onclick = () => {
+      panel.classList.add('hidden');
+      unit.ap = 0;
+      scene.isWaiting = false;
+      scene.currentUnit = null;
+    };
+    bc.appendChild(eb);
+    
     panel.classList.remove('hidden');
+  },
+
+  updateAPDisplay(current, max) {
+    const container = document.getElementById('current-ap');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    for (let i = 0; i < max; i++) {
+      const dot = document.createElement('span');
+      dot.className = i < current ? 'ap-dot active' : 'ap-dot';
+      dot.textContent = '●';
+      container.appendChild(dot);
+    }
+  },
+
+  updateActionQueue(queue) {
+    const container = document.getElementById('action-queue');
+    if (!container) return;
+    
+    if (queue.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+    
+    container.style.display = '';
+    const queueList = container.querySelector('.queue-list');
+    queueList.innerHTML = '';
+    
+    for (let i = 0; i < queue.length; i++) {
+      const item = document.createElement('div');
+      item.className = 'queue-item';
+      item.textContent = `${i + 1}. ${queue[i].name}`;
+      queueList.appendChild(item);
+    }
   },
 
   showTargets(scene) {
@@ -1046,10 +1310,18 @@ const UI = {
     const panel = document.getElementById('target-panel');
     const tc = document.getElementById('target-buttons');
     tc.innerHTML = '';
+    document.querySelector('.panel-title').textContent = '选择目标';
+    
     for (const e of scene.enemyUnits.filter(u => !u.isDead)) {
       const b = document.createElement('button');
       b.className = 'btn-target';
-      b.textContent = `${e.name}  HP:${e.hp}/${e.maxHp}`;
+      
+      let statusText = '';
+      if (e.statusEffects.length > 0) {
+        statusText = ' ' + e.statusEffects.map(s => s.icon).join('');
+      }
+      
+      b.textContent = `${e.name} [${e.element}] HP:${e.hp}/${e.maxHp}${statusText}`;
       b.onclick = () => {
         panel.classList.add('hidden');
         if (scene.selectedSkill) scene._doSkill(scene.currentUnit, scene.selectedSkill, e);
@@ -1120,7 +1392,7 @@ window.addEventListener('resize', syncScale);
 // ─── Launch ───
 const config = {
   type: Phaser.AUTO,
-  width: RW,   // Render at high-res
+  width: RW,
   height: RH,
   parent: 'game-container',
   backgroundColor: '#080a18',

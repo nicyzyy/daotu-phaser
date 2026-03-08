@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════
-   道途 V6 — 仙侠战斗UI (修仙风格强化版)
+   道途 V7 — AP行动点+五行克制+状态效果系统
    ═══════════════════════════════════════════ */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -139,7 +139,7 @@ body {
 .side-panel {
   position: absolute;
   top: 56px;
-  width: 155px;
+  width: 165px;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -222,18 +222,44 @@ body {
 }
 .sp-nums.mp { font-size: 7px; color: rgba(160,180,230,0.5); }
 
+/* ✨ 状态图标 ✨ */
+.sp-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 2px;
+  min-height: 12px;
+}
+.status-icon {
+  font-size: 9px;
+  padding: 1px 3px;
+  border-radius: 2px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.status-icon.status-buff {
+  background: rgba(64,200,96,0.2);
+  border: 1px solid rgba(64,200,96,0.3);
+  color: #80ff90;
+  text-shadow: 0 0 3px rgba(64,255,144,0.4);
+}
+.status-icon.status-debuff {
+  background: rgba(200,48,48,0.2);
+  border: 1px solid rgba(200,48,48,0.3);
+  color: #ff8080;
+  text-shadow: 0 0 3px rgba(255,128,128,0.4);
+}
+
 /* ═══════════════════════════════════════════
-   ✨ Action Panel — 仙侠风格强化
+   ✨ Action Panel — AP行动点显示
    ═══════════════════════════════════════════ */
 #action-panel {
   position: absolute;
   bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 750px;
+  width: 850px;
   background:
-    /* 顶部金边装饰线 */
     linear-gradient(180deg,
       rgba(201,168,76,0.35) 0px, transparent 2px),
-    /* 主体渐变 — 深青墨底 */
     linear-gradient(180deg,
       rgba(12,28,24,0.96) 0%,
       rgba(8,18,16,0.98) 50%,
@@ -246,14 +272,11 @@ body {
     0 -4px 30px rgba(0,0,0,0.5),
     0 -1px 0 rgba(201,168,76,0.15),
     inset 0 1px 0 rgba(201,168,76,0.08),
-    /* 内侧仙气光晕 */
     inset 0 0 40px rgba(64,200,160,0.03);
   animation: panelRise 0.25s ease-out;
-  /* 仙侠纹理 — CSS 八卦暗纹 */
   background-image:
     radial-gradient(circle at 10% 50%, rgba(64,232,200,0.03) 0%, transparent 40%),
     radial-gradient(circle at 90% 50%, rgba(201,168,76,0.03) 0%, transparent 40%),
-    /* 云纹装饰 */
     radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.04) 0%, transparent 60%);
 }
 #action-panel::before {
@@ -269,7 +292,6 @@ body {
     transparent);
   filter: blur(0.5px);
 }
-/* 左右角装饰符文 */
 #action-panel::after {
   content: '☰ · ☷';
   position: absolute;
@@ -288,7 +310,6 @@ body {
   display: flex; align-items: center; gap: 12px;
   margin-bottom: 10px; padding-bottom: 8px;
   border-bottom: 1px solid rgba(201,168,76,0.15);
-  /* 仙侠分割线装饰 */
   background-image: linear-gradient(90deg,
     transparent, rgba(201,168,76,0.08) 30%, rgba(201,168,76,0.08) 70%, transparent);
   background-size: 100% 1px;
@@ -304,7 +325,6 @@ body {
   box-shadow:
     0 0 12px rgba(201,168,76,0.2),
     inset 0 0 8px rgba(0,0,0,0.3);
-  /* 金色角框装饰 */
   outline: 1px solid rgba(201,168,76,0.15);
   outline-offset: 3px;
 }
@@ -313,18 +333,49 @@ body {
   text-shadow: 0 0 12px rgba(201,168,76,0.3), 0 1px 3px rgba(0,0,0,0.5);
   font-weight: bold;
   letter-spacing: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
+
+/* ✨ AP 显示 ✨ */
+.ap-display {
+  font-size: 12px;
+  color: rgba(255,215,100,0.8);
+  font-weight: normal;
+  letter-spacing: 1px;
+}
+.ap-dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 4px;
+}
+.ap-dot {
+  font-size: 10px;
+  color: rgba(100,100,110,0.4);
+  text-shadow: 0 0 2px rgba(0,0,0,0.5);
+  transition: all 0.2s;
+}
+.ap-dot.active {
+  color: #ffd84a;
+  text-shadow: 0 0 6px rgba(255,216,74,0.6);
+  animation: apPulse 0.3s ease-out;
+}
+@keyframes apPulse {
+  0% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
 #action-buttons {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 }
 
-/* ═══ Skill Buttons — 仙侠卷轴风 ═══ */
+/* ═══ Skill Buttons — 五行元素标签 ═══ */
 .btn-xianxia {
   position: relative;
   background:
-    /* 卷轴纸纹理感 */
     linear-gradient(180deg,
       rgba(40,60,45,0.85) 0%,
       rgba(28,45,32,0.92) 40%,
@@ -338,10 +389,8 @@ body {
   transition: all 0.15s;
   text-shadow: 0 1px 2px rgba(0,0,0,0.6);
   overflow: hidden;
-  /* 顶部金丝线 */
   box-shadow: inset 0 1px 0 rgba(201,168,76,0.15);
 }
-/* 灵气光效 hover */
 .btn-xianxia::before {
   content: '';
   position: absolute;
@@ -362,7 +411,6 @@ body {
   box-shadow:
     0 4px 15px rgba(100,180,80,0.2),
     inset 0 1px 0 rgba(201,168,76,0.25),
-    /* 底部灵气光 */
     0 1px 0 rgba(100,200,120,0.15);
 }
 .btn-xianxia:active {
@@ -378,11 +426,28 @@ body {
 }
 .btn-xianxia:disabled::before { display: none; }
 
+/* ✨ Combo Ready 边框发光效果 ✨ */
+.btn-xianxia.combo-ready {
+  border-color: rgba(255,215,100,0.6);
+  box-shadow:
+    0 0 12px rgba(255,215,100,0.4),
+    inset 0 0 8px rgba(255,215,100,0.15);
+  animation: comboGlow 1.5s ease-in-out infinite;
+}
+@keyframes comboGlow {
+  0%, 100% { box-shadow: 0 0 12px rgba(255,215,100,0.4), inset 0 0 8px rgba(255,215,100,0.15); }
+  50% { box-shadow: 0 0 20px rgba(255,215,100,0.7), inset 0 0 12px rgba(255,215,100,0.25); }
+}
+
 .btn-name {
   font-size: 13px; font-weight: bold;
   color: #dcc07a;
   letter-spacing: 1px;
   text-shadow: 0 0 6px rgba(201,168,76,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 .btn-stats {
   font-size: 9px;
@@ -395,11 +460,46 @@ body {
   margin-top: 2px;
 }
 
+/* ✨ 五行元素标签 ✨ */
+.element-tag {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-weight: normal;
+  background: rgba(201,168,76,0.2);
+  border: 1px solid rgba(201,168,76,0.3);
+  color: #ffd84a;
+}
+
+/* ✨ 结束回合按钮 ✨ */
+.btn-end-turn {
+  grid-column: span 4;
+  margin-top: 6px;
+  background: linear-gradient(180deg, rgba(60,40,30,0.9), rgba(45,28,20,0.95));
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 5px;
+  color: #dcc07a;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  letter-spacing: 2px;
+}
+.btn-end-turn:hover {
+  background: linear-gradient(180deg, rgba(80,50,35,0.95), rgba(60,38,25,0.98));
+  border-color: rgba(201,168,76,0.5);
+  box-shadow: 0 0 12px rgba(201,168,76,0.2);
+  transform: translateY(-1px);
+}
+
 /* ═══ Target Panel ═══ */
 #target-panel {
   position: absolute;
   bottom: 10px; left: 50%; transform: translateX(-50%);
-  width: 300px;
+  width: 320px;
   background:
     linear-gradient(180deg,
       rgba(201,168,76,0.2) 0px, transparent 2px),
@@ -498,6 +598,29 @@ body {
   0% { opacity:1; transform:translateY(0) scale(1.3); }
   40% { opacity:1; transform:translateY(-28px) scale(1); }
   100% { opacity:0; transform:translateY(-55px) scale(0.8); }
+}
+
+/* ✨ 技能队列（预留，当前未使用） ✨ */
+#action-queue {
+  position: absolute;
+  bottom: 180px; left: 50%; transform: translateX(-50%);
+  background: rgba(8,18,16,0.95);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: none;
+}
+.queue-list {
+  display: flex;
+  gap: 6px;
+}
+.queue-item {
+  font-size: 11px;
+  color: #dcc07a;
+  padding: 4px 8px;
+  background: rgba(40,60,45,0.6);
+  border: 1px solid rgba(120,180,100,0.3);
+  border-radius: 4px;
 }
 
 .hidden { display: none !important; }
