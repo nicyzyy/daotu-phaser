@@ -434,7 +434,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=39';
+    const V = 'v=40';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -460,7 +460,7 @@ class BattleScene extends Phaser.Scene {
     
     // Debug overlay
     const dbg = document.createElement('div');
-    dbg.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);color:#0f0;font:10px monospace;background:rgba(0,0,0,0.7);padding:2px 6px;z-index:99999;pointer-events:none;';
+    dbg.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);color:#0f0;font:14px monospace;text-shadow:0 0 4px #0f0;background:rgba(0,0,0,0.7);padding:2px 6px;z-index:99999;pointer-events:none;';
     document.body.appendChild(dbg);
     this._dbg = dbg;
     
@@ -587,8 +587,8 @@ class BattleScene extends Phaser.Scene {
     if (!this.battleActive) return;
     if (this.isWaiting) {
       if (!this._waitStart) this._waitStart = Date.now();
-      if (Date.now() - this._waitStart > 3000) {
-        console.warn('[道途] isWaiting stuck for 3s, force unlocking');
+      if (Date.now() - this._waitStart > 8000) {
+        console.warn('[道途] isWaiting stuck for 8s, force unlocking');
         UI.log('[系统] 回合超时，自动恢复', 'system');
         document.getElementById('action-panel').classList.add('hidden');
         document.getElementById('target-panel').classList.add('hidden');
@@ -632,6 +632,7 @@ class BattleScene extends Phaser.Scene {
       }
       
       this.isWaiting = true; // 锁定，防止 update 重复触发
+      this._waitStart = 0; // 重置看门狗
       if (best.isPlayer) {
         UI.showAction(this, best);
         const sp = this.sprites[best.name];
@@ -1598,6 +1599,7 @@ class BattleScene extends Phaser.Scene {
   _afterAction(unit) {
     try {
       if (!this.battleActive) return;
+      this._waitStart = 0; // 重置看门狗计时！
       if (unit && unit.ap > 0 && unit.isPlayer && !unit.isDead) {
         this.isWaiting = true;
         UI.showAction(this, unit);
@@ -1887,8 +1889,8 @@ setInterval(() => {
   try {
     const scene = game.scene.getScene('BattleScene');
     if (!scene || !scene.battleActive) return;
-    if (scene.isWaiting && scene._waitStart && Date.now() - scene._waitStart > 3000) {
-      console.warn('[看门狗] 3s 超时，强制恢复');
+    if (scene.isWaiting && scene._waitStart && Date.now() - scene._waitStart > 8000) {
+      console.warn('[看门狗] 8s 超时，强制恢复');
       document.getElementById('action-panel').classList.add('hidden');
       document.getElementById('target-panel').classList.add('hidden');
       scene.isWaiting = false;
