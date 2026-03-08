@@ -434,7 +434,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=38';
+    const V = 'v=39';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -457,6 +457,12 @@ class BattleScene extends Phaser.Scene {
     this._buildATB();
     this.battleActive = true;
     UI.log('[战] 战斗开始!', 'system');
+    
+    // Debug overlay
+    const dbg = document.createElement('div');
+    dbg.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);color:#0f0;font:10px monospace;background:rgba(0,0,0,0.7);padding:2px 6px;z-index:99999;pointer-events:none;';
+    document.body.appendChild(dbg);
+    this._dbg = dbg;
     
     // 启动 BGM
     Audio.startBGM();
@@ -575,6 +581,9 @@ class BattleScene extends Phaser.Scene {
   }
 
   update(_, delta) {
+    // Debug 状态显示
+    if (this._dbg) { this._dbg.textContent = `W:${this.isWaiting?1:0} CU:${this.currentUnit?.name||'-'} AP:${this.currentUnit?.ap??'-'} BA:${this.battleActive?1:0}`; }
+    
     if (!this.battleActive) return;
     if (this.isWaiting) {
       if (!this._waitStart) this._waitStart = Date.now();
@@ -1360,7 +1369,7 @@ class BattleScene extends Phaser.Scene {
     this._animAttack(atk.name, tgt.name);
     
     // 固定 800ms 后推进游戏（与动画完全解耦）
-    this.time.delayedCall(800, () => this._afterAction(atk));
+    setTimeout(() => { try { this._afterAction(atk); } catch(e) { this.isWaiting=false; this.currentUnit=null; } }, 800);
     } catch(e) {
       console.error('[道途] _doAttack error:', e);
       this.isWaiting = false; this.currentUnit = null; this._checkEnd();
@@ -1424,7 +1433,7 @@ class BattleScene extends Phaser.Scene {
       this._refreshHP();
       
       this._animHeal(atk.name);
-      this.time.delayedCall(800, () => this._afterAction(atk));
+      setTimeout(() => { try { this._afterAction(atk); } catch(e) { this.isWaiting=false; this.currentUnit=null; } }, 800);
       return;
     }
 
@@ -1441,7 +1450,7 @@ class BattleScene extends Phaser.Scene {
       this._refreshHP();
       
       this._animHeal(atk.name);
-      this.time.delayedCall(800, () => this._afterAction(atk));
+      setTimeout(() => { try { this._afterAction(atk); } catch(e) { this.isWaiting=false; this.currentUnit=null; } }, 800);
       return;
     }
 
@@ -1503,7 +1512,7 @@ class BattleScene extends Phaser.Scene {
     this._refreshHP();
     
     this._animCast(atk.name, tgt.name, skill.element);
-    this.time.delayedCall(1000, () => this._afterAction(atk));
+    setTimeout(() => { try { this._afterAction(atk); } catch(e) { this.isWaiting=false; this.currentUnit=null; } }, 1000);
     } catch(e) {
       console.error('[道途] _doSkill error:', e);
       this.time.delayedCall(500, () => { this.isWaiting = false; this.currentUnit = null; this._checkEnd(); });
@@ -1587,14 +1596,20 @@ class BattleScene extends Phaser.Scene {
 
   // ─── 统一的回合后处理（与动画完全解耦）───
   _afterAction(unit) {
-    if (!this.battleActive) return;
-    if (unit.ap > 0 && unit.isPlayer && !unit.isDead) {
-      this.isWaiting = true;
-      UI.showAction(this, unit);
-    } else {
+    try {
+      if (!this.battleActive) return;
+      if (unit && unit.ap > 0 && unit.isPlayer && !unit.isDead) {
+        this.isWaiting = true;
+        UI.showAction(this, unit);
+      } else {
+        this.isWaiting = false;
+        this.currentUnit = null;
+        this._checkEnd();
+      }
+    } catch(e) {
+      console.error('[道途] _afterAction error:', e);
       this.isWaiting = false;
       this.currentUnit = null;
-      this._checkEnd();
     }
   }
 
@@ -1872,8 +1887,8 @@ setInterval(() => {
   try {
     const scene = game.scene.getScene('BattleScene');
     if (!scene || !scene.battleActive) return;
-    if (scene.isWaiting && scene._waitStart && Date.now() - scene._waitStart > 5000) {
-      console.warn('[看门狗] 5s 超时，强制恢复');
+    if (scene.isWaiting && scene._waitStart && Date.now() - scene._waitStart > 3000) {
+      console.warn('[看门狗] 3s 超时，强制恢复');
       document.getElementById('action-panel').classList.add('hidden');
       document.getElementById('target-panel').classList.add('hidden');
       scene.isWaiting = false;
