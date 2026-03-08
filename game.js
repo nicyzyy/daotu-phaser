@@ -434,7 +434,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=37';
+    const V = 'v=38';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -954,10 +954,10 @@ class BattleScene extends Phaser.Scene {
     this.cameras.main.flash(dur, (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff, true);
   }
 
-  _animAttack(atk, tgt, onDone) {
+  _animAttack(atk, tgt) {
     try {
     const sp = this.sprites[atk], bp = this.basePos[atk], tbp = this.basePos[tgt];
-    if (!sp || !bp || !tbp || !sp.active) { if (onDone) onDone(); return; }
+    if (!sp || !bp || !tbp || !sp.active) return;
     this.tweens.killTweensOf(sp);
     this._pose(atk, 'attack');
 
@@ -980,13 +980,12 @@ class BattleScene extends Phaser.Scene {
         { x: tbp.x - dir * 80 * DPR, duration: 60, ease: 'Quad.easeOut' },
         { x: bp.x, scaleX: sc, scaleY: sc, duration: 300, ease: 'Cubic.easeOut',
           onComplete: () => {
-            try { this._resetIdle(atk); } catch(e2) { console.warn('[道途] atk reset err', e2); }
-            if (onDone) this.time.delayedCall(50, onDone);
+            try { this._resetIdle(atk); } catch(e) {}
           }
         },
       ]
     });
-    } catch(e) { console.error('[道途] _animAttack error:', e); if (onDone) onDone(); }
+    } catch(e) { console.error('[道途] _animAttack error:', e); }
   }
 
   _fxSlash(tgt) {
@@ -1119,10 +1118,10 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
-  _animCast(caster, tgt, element = '无', onDone) {
+  _animCast(caster, tgt, element = '无') {
     try {
     const sp = this.sprites[caster], bp = this.basePos[caster];
-    if (!sp || !bp || !sp.active) { if (onDone) onDone(); return; }
+    if (!sp || !bp || !sp.active) return;
     this.tweens.killTweensOf(sp);
     this._pose(caster, 'cast');
 
@@ -1161,11 +1160,10 @@ class BattleScene extends Phaser.Scene {
       }
       sp.clearTint();
       this.time.delayedCall(700, () => {
-        try { this._resetIdle(caster); } catch(e2) { console.warn('[道途] cast reset err', e2); }
-        if (onDone) this.time.delayedCall(50, onDone);
+        try { this._resetIdle(caster); } catch(e) {}
       });
     });
-    } catch(e) { console.error('[道途] _animCast error:', e); if (onDone) onDone(); }
+    } catch(e) { console.error('[道途] _animCast error:', e); }
   }
 
   _fxMagicProjectile(fromX, fromY, targetSp) {
@@ -1225,10 +1223,10 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
-  _animHeal(name, onDone) {
+  _animHeal(name) {
     try {
     const sp = this.sprites[name];
-    if (!sp || !this.basePos[name] || !sp.active) { if (onDone) onDone(); return; }
+    if (!sp || !this.basePos[name] || !sp.active) return;
     this.tweens.killTweensOf(sp);
     this._pose(name, 'cast');
 
@@ -1271,10 +1269,9 @@ class BattleScene extends Phaser.Scene {
     }
 
     this.time.delayedCall(700, () => {
-      try { sp.clearTint(); this._resetIdle(name); } catch(e2) { console.warn('[道途] heal reset err', e2); }
-      if (onDone) this.time.delayedCall(50, onDone);
+      try { sp.clearTint(); this._resetIdle(name); } catch(e) {}
     });
-    } catch(e) { console.error('[道途] _animHeal error:', e); if (onDone) onDone(); }
+    } catch(e) { console.error('[道途] _animHeal error:', e); }
   }
 
   // ─── ATB Bar ───
@@ -1357,24 +1354,13 @@ class BattleScene extends Phaser.Scene {
       UI.log(`[亡] ${tgt.name} 被击败了！`, 'kill');
       this.time.delayedCall(500, () => { if (!this.defeatedSet.has(tgt.name)) { this.defeatedSet.add(tgt.name); this._animDefeat(tgt.name); } });
     }
-    
     atk.ap -= 1;
     
-    let _done = false;
-    const finishTurn = () => {
-      if (_done) return; _done = true;
-      if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
-        this.isWaiting = true;
-        UI.showAction(this, atk);
-      } else {
-        this.isWaiting = false;
-        this.currentUnit = null;
-        this._checkEnd();
-      }
-    };
+    // 动画是纯视觉，fire-and-forget
+    this._animAttack(atk.name, tgt.name);
     
-    this._animAttack(atk.name, tgt.name, finishTurn);
-    this.time.delayedCall(2000, finishTurn);
+    // 固定 800ms 后推进游戏（与动画完全解耦）
+    this.time.delayedCall(800, () => this._afterAction(atk));
     } catch(e) {
       console.error('[道途] _doAttack error:', e);
       this.isWaiting = false; this.currentUnit = null; this._checkEnd();
@@ -1437,21 +1423,8 @@ class BattleScene extends Phaser.Scene {
       
       this._refreshHP();
       
-      // 动画完成后才判断下一步（含安全超时）
-      { let _hd = false;
-        const _hft = () => {
-          if (_hd) return; _hd = true;
-          if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
-            this.isWaiting = true;
-            UI.showAction(this, atk);
-          } else {
-            this.isWaiting = false;
-            this.currentUnit = null;
-          }
-        };
-        this._animHeal(atk.name, _hft);
-        this.time.delayedCall(2000, _hft);
-      }
+      this._animHeal(atk.name);
+      this.time.delayedCall(800, () => this._afterAction(atk));
       return;
     }
 
@@ -1467,21 +1440,8 @@ class BattleScene extends Phaser.Scene {
       
       this._refreshHP();
       
-      // 动画完成后才判断下一步（含安全超时）
-      { let _hd = false;
-        const _hft = () => {
-          if (_hd) return; _hd = true;
-          if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
-            this.isWaiting = true;
-            UI.showAction(this, atk);
-          } else {
-            this.isWaiting = false;
-            this.currentUnit = null;
-          }
-        };
-        this._animHeal(atk.name, _hft);
-        this.time.delayedCall(2000, _hft);
-      }
+      this._animHeal(atk.name);
+      this.time.delayedCall(800, () => this._afterAction(atk));
       return;
     }
 
@@ -1542,24 +1502,11 @@ class BattleScene extends Phaser.Scene {
     
     this._refreshHP();
     
-    let _done = false;
-    const finishTurn = () => {
-      if (_done) return; _done = true;
-      if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
-        this.isWaiting = true;
-        UI.showAction(this, atk);
-      } else {
-        this.isWaiting = false;
-        this.currentUnit = null;
-        this._checkEnd();
-      }
-    };
-    
-    this._animCast(atk.name, tgt.name, skill.element, finishTurn);
-    this.time.delayedCall(2000, finishTurn);
+    this._animCast(atk.name, tgt.name, skill.element);
+    this.time.delayedCall(1000, () => this._afterAction(atk));
     } catch(e) {
       console.error('[道途] _doSkill error:', e);
-      this.isWaiting = false; this.currentUnit = null; this._checkEnd();
+      this.time.delayedCall(500, () => { this.isWaiting = false; this.currentUnit = null; this._checkEnd(); });
     }
   }
 
@@ -1634,6 +1581,20 @@ class BattleScene extends Phaser.Scene {
     } else {
       this.isWaiting = false;
       this.currentUnit = null;
+    }
+  }
+
+
+  // ─── 统一的回合后处理（与动画完全解耦）───
+  _afterAction(unit) {
+    if (!this.battleActive) return;
+    if (unit.ap > 0 && unit.isPlayer && !unit.isDead) {
+      this.isWaiting = true;
+      UI.showAction(this, unit);
+    } else {
+      this.isWaiting = false;
+      this.currentUnit = null;
+      this._checkEnd();
     }
   }
 
@@ -1905,3 +1866,20 @@ const config = {
 
 const game = new Phaser.Game(config);
 requestAnimationFrame(syncScale);
+
+// ─── 独立看门狗（不依赖 Phaser update loop）───
+setInterval(() => {
+  try {
+    const scene = game.scene.getScene('BattleScene');
+    if (!scene || !scene.battleActive) return;
+    if (scene.isWaiting && scene._waitStart && Date.now() - scene._waitStart > 5000) {
+      console.warn('[看门狗] 5s 超时，强制恢复');
+      document.getElementById('action-panel').classList.add('hidden');
+      document.getElementById('target-panel').classList.add('hidden');
+      scene.isWaiting = false;
+      scene.currentUnit = null;
+      scene._waitStart = 0;
+      scene._checkEnd();
+    }
+  } catch(e) {}
+}, 1000);
