@@ -8,10 +8,25 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="screen-orientation" content="landscape">
 <title>道途 — 与天争命</title>
-<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-<link rel="stylesheet" href="style.css?v=43">
+<link rel="stylesheet" href="style.css?v=44">
+<script>
+// 全局错误捕获
+window.onerror = function(msg, url, line, col, err) {
+  document.getElementById('crash-info').style.display = 'block';
+  document.getElementById('crash-detail').textContent = msg + ' @L' + line;
+  return false;
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js" onerror="document.getElementById('crash-info').style.display='block';document.getElementById('crash-detail').textContent='Phaser CDN failed';"></script>
 </head>
 <body>
+<!-- 崩溃提示 + 外部浏览器引导 -->
+<div id="crash-info" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0a1a;z-index:999999;color:#dcc07a;text-align:center;padding:40px 20px;font-family:sans-serif;">
+  <h2 style="margin-bottom:20px;">⚔️ 道途 — 与天争命</h2>
+  <p style="color:#aaa;margin-bottom:30px;">当前浏览器不支持游戏运行</p>
+  <a id="open-external" href="" onclick="this.href=window.location.href" style="display:inline-block;padding:16px 32px;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#fff;text-decoration:none;border-radius:12px;font-size:18px;font-weight:bold;margin-bottom:15px;">🌐 用浏览器打开</a>
+  <p style="color:#666;font-size:12px;margin-top:20px;">Error: <span id="crash-detail">Unknown</span></p>
+</div>
 <div id="game-wrapper">
   <div id="game-container"></div>
   <!-- UI Overlay — sits inside wrapper, scaled to match canvas -->
@@ -67,7 +82,7 @@
 <!-- 移动端全屏按钮 -->
 <button id="fullscreen-btn" onclick="toggleFullscreen()">⛶</button>
 
-<script src="game.js?v=43"></script>
+<script src="game.js?v=44"></script>
 <script>
 function toggleFullscreen() {
   const el = document.documentElement;

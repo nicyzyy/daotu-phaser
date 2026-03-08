@@ -434,7 +434,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=43';
+    const V = 'v=44';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     // 只预加载 idle + portrait（快速启动），其他 pose 延迟加载
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
@@ -458,7 +458,7 @@ class BattleScene extends Phaser.Scene {
     UI.log('[战] 战斗开始!', 'system');
     
     // 延迟加载其他 pose（不阻塞战斗开始）
-    const V = 'v=43';
+    const V = 'v=44';
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['attack', 'cast', 'hit', 'defeated']) {
         if (!this.textures.exists(`${folder}_${pose}_left`)) {
@@ -1887,7 +1887,7 @@ if (window.visualViewport) {
 
 // ─── Launch ───
 const config = {
-  type: Phaser.AUTO,
+  type: Phaser.CANVAS,
   width: RW,
   height: RH,
   parent: 'game-container',
@@ -1898,12 +1898,19 @@ const config = {
   render: { antialias: true, roundPixels: false, pixelArt: false },
 };
 
-const game = new Phaser.Game(config);
+let game;
+try {
+  game = new Phaser.Game(config);
+} catch(e) {
+  document.getElementById('crash-info').style.display = 'block';
+  document.getElementById('crash-detail').textContent = 'Phaser init: ' + e.message;
+}
 requestAnimationFrame(syncScale);
 
 // ─── 独立看门狗（不依赖 Phaser update loop）───
 setInterval(() => {
   try {
+    if (!game) return;
     const scene = game.scene.getScene('BattleScene');
     if (!scene || !scene.battleActive) return;
     if (scene.isWaiting && scene._waitStart && Date.now() - scene._waitStart > 8000) {
