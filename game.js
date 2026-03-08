@@ -1,6 +1,156 @@
 /* ═══════════════════════════════════════════════════════
-   道途 — Phaser 3 AP战斗系统 V4 (AP行动点+五行克制+状态效果)
+   道途 — Phaser 3 AP战斗系统 V5 (3+2轮换+头顶HP+音效+落地感)
    ═══════════════════════════════════════════════════════ */
+
+// ─── Audio System ───
+class AudioSystem {
+  constructor() {
+    this.audioContext = null;
+    this.bgmGain = null;
+    this.bgmOscillators = [];
+    this.speechSynthesis = window.speechSynthesis;
+  }
+
+  init() {
+    if (!this.audioContext) {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      this.bgmGain = this.audioContext.createGain();
+      this.bgmGain.connect(this.audioContext.destination);
+      this.bgmGain.gain.value = 0.15;
+    }
+  }
+
+  // BGM: 古风循环（模拟古琴/笛子）
+  startBGM() {
+    this.init();
+    this.stopBGM();
+    
+    const ctx = this.audioContext;
+    const notes = [220, 247, 277, 294, 330, 370, 415]; // 五声音阶
+    
+    const playNote = (freq, delay, duration) => {
+      setTimeout(() => {
+        if (!this.bgmOscillators.length) return;
+        
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+        
+        osc.connect(gain);
+        gain.connect(this.bgmGain);
+        
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + duration);
+      }, delay);
+    };
+    
+    const pattern = [0, 2, 4, 2, 1, 2, 0, -1];
+    let time = 0;
+    
+    const loop = () => {
+      if (!this.bgmOscillators.length) return;
+      
+      for (let i = 0; i < pattern.length; i++) {
+        const idx = (pattern[i] + 7) % 7;
+        playNote(notes[idx] * 0.5, time, 1.8);
+        time += 1200;
+      }
+      
+      setTimeout(loop, time);
+      time = 0;
+    };
+    
+    this.bgmOscillators.push(true);
+    loop();
+  }
+
+  stopBGM() {
+    this.bgmOscillators = [];
+  }
+
+  // 技能音效
+  playSkillSound(element) {
+    this.init();
+    const ctx = this.audioContext;
+    
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    // 根据五行属性设置不同音效
+    switch (element) {
+      case '金': // 清脆金属声
+        osc.type = 'square';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.stop(ctx.currentTime + 0.15);
+        break;
+      case '水': // 流水声
+        osc.type = 'sine';
+        osc.frequency.value = 440;
+        osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.stop(ctx.currentTime + 0.3);
+        break;
+      case '火': // 爆裂声
+        osc.type = 'sawtooth';
+        osc.frequency.value = 100;
+        osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        osc.stop(ctx.currentTime + 0.2);
+        break;
+      case '木':
+      case '毒': // 嘶嘶声
+        osc.type = 'sawtooth';
+        osc.frequency.value = 200;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+        osc.stop(ctx.currentTime + 0.4);
+        break;
+      case '土': // 低沉声
+        osc.type = 'triangle';
+        osc.frequency.value = 110;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.stop(ctx.currentTime + 0.5);
+        break;
+      default: // 物理攻击
+        osc.type = 'sine';
+        osc.frequency.value = 330;
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        osc.stop(ctx.currentTime + 0.2);
+    }
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+  }
+
+  // 我方角色语音播报技能名
+  speakSkillName(skillName) {
+    if (!this.speechSynthesis) return;
+    
+    const utterance = new SpeechSynthesisUtterance(skillName);
+    utterance.lang = 'zh-CN';
+    utterance.rate = 1.2;
+    utterance.pitch = 1.1;
+    utterance.volume = 0.7;
+    
+    this.speechSynthesis.cancel();
+    this.speechSynthesis.speak(utterance);
+  }
+}
+
+const Audio = new AudioSystem();
 
 // ─── Data Classes ───
 class SkillData {
@@ -13,14 +163,14 @@ class SkillData {
     this.targetType = targetType;
     this.damageType = damageType;
     this.element = element;
-    this.effects = effects; // 状态效果数组
+    this.effects = effects;
   }
 }
 
 class StatusEffect {
   constructor(name, type, duration, stacks = 1, icon = '•') {
     this.name = name;
-    this.type = type; // 'buff' or 'debuff'
+    this.type = type;
     this.duration = duration;
     this.stacks = stacks;
     this.icon = icon;
@@ -45,6 +195,7 @@ class BattleUnit {
     this.maxAp = stats.maxAp || 3;
     this.ap = 0;
     this.statusEffects = [];
+    this.isBench = false; // 是否在待机区
   }
   getAtbSpeed() { return 1.0 + this.agility / 100.0; }
   takeDamage(dmg) {
@@ -73,7 +224,6 @@ class BattleUnit {
     this.statusEffects = this.statusEffects.filter(s => s.name !== name);
   }
   tickStatusEffects(scene) {
-    // 持续伤害/治疗
     for (const s of this.statusEffects) {
       if (s.name === '中毒') {
         const dmg = Math.ceil(this.maxHp * 0.03 * s.stacks);
@@ -103,7 +253,6 @@ class BattleUnit {
       }
     }
     
-    // 减少持续时间，移除过期效果
     this.statusEffects = this.statusEffects.filter(s => {
       s.duration--;
       return s.duration > 0;
@@ -159,28 +308,27 @@ function getElementMultiplier(attackElement, targetElement) {
     '火': '金',
   };
   
-  if (counterMap[attackElement] === targetElement) return 1.5; // 克制
-  if (counterMap[targetElement] === attackElement) return 0.75; // 被克
+  if (counterMap[attackElement] === targetElement) return 1.5;
+  if (counterMap[targetElement] === attackElement) return 0.75;
   return 1.0;
 }
 
-// ─── 纵列站位系统 ───
+// ─── 站位系统（调整 y 坐标以对齐地面）───
 const CHAR_HEIGHT = 200;
+const GROUND_Y = 0.68; // 地面线位置
 
 const ALLY_SLOTS = [
-  { x: 0.30, y: 0.40, row: 'front' },
-  { x: 0.28, y: 0.56, row: 'front' },
-  { x: 0.16, y: 0.33, row: 'back' },
-  { x: 0.14, y: 0.48, row: 'back' },
-  { x: 0.16, y: 0.63, row: 'back' },
+  { x: 0.30, y: GROUND_Y - 0.10, row: 'front' },
+  { x: 0.28, y: GROUND_Y + 0.06, row: 'front' },
+  { x: 0.16, y: GROUND_Y - 0.17, row: 'back' },
 ];
 
 const ENEMY_SLOTS = [
-  { x: 0.70, y: 0.40, row: 'front' },
-  { x: 0.72, y: 0.56, row: 'front' },
-  { x: 0.84, y: 0.33, row: 'back' },
-  { x: 0.86, y: 0.48, row: 'back' },
-  { x: 0.84, y: 0.63, row: 'back' },
+  { x: 0.70, y: GROUND_Y - 0.10, row: 'front' },
+  { x: 0.72, y: GROUND_Y + 0.06, row: 'front' },
+  { x: 0.84, y: GROUND_Y - 0.17, row: 'back' },
+  { x: 0.86, y: GROUND_Y, row: 'back' },
+  { x: 0.84, y: GROUND_Y + 0.13, row: 'back' },
 ];
 
 const GW = 1280, GH = 720;
@@ -196,20 +344,22 @@ class BattleScene extends Phaser.Scene {
     this.allUnits = [];
     this.playerUnits = [];
     this.enemyUnits = [];
+    this.activeAllies = []; // 3+2 轮换：上场的 3 人
+    this.benchAllies = []; // 待机区的 2 人
     this.sprites = {};
     this.basePos = {};
+    this.shadows = {}; // 角色阴影
+    this.hpBars = {}; // 头顶 HP 条
     this.currentUnit = null;
     this.selectedSkill = null;
     this.isWaiting = false;
     this.battleActive = false;
     this.defeatedSet = new Set();
     this.atbSpeed = 30;
-    this.actionQueue = []; // 技能队列
-    this.isExecuting = false; // 是否正在执行技能队列
   }
 
   preload() {
-    const V = 'v=31';  // cache buster
+    const V = 'v=32';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -230,12 +380,15 @@ class BattleScene extends Phaser.Scene {
     this._createUnits();
     this._spawnSprites();
     this._buildATB();
-    this._buildOverhead();
     this.battleActive = true;
     UI.log('[战] 战斗开始!', 'system');
+    
+    // 启动 BGM
+    Audio.startBGM();
   }
 
   _createAmbientEffects() {
+    // 原有粒子效果
     this.time.addEvent({
       delay: 800, loop: true,
       callback: () => {
@@ -258,6 +411,7 @@ class BattleScene extends Phaser.Scene {
       }
     });
 
+    // 云雾
     for (let i = 0; i < 3; i++) {
       const mistY = RH * (0.75 + i * 0.08);
       const mist = this.add.rectangle(RW / 2, mistY, RW * 1.5, 30 * DPR, 0xccddee, 0.04 + i * 0.02).setDepth(-4 + i);
@@ -269,6 +423,7 @@ class BattleScene extends Phaser.Scene {
       });
     }
 
+    // 灵气涌动
     this.time.addEvent({
       delay: 3000, loop: true,
       callback: () => {
@@ -289,6 +444,55 @@ class BattleScene extends Phaser.Scene {
       }
     });
 
+    // ✨ 新增：树叶/花瓣飘落效果 ✨
+    this.time.addEvent({
+      delay: 1500, loop: true,
+      callback: () => {
+        const x = Phaser.Math.Between(0, RW);
+        const y = -20 * DPR;
+        const sz = (3 + Math.random() * 4) * DPR;
+        const colors = [0xffc0d0, 0xffe0b0, 0xd0e0a0, 0xffd0e0];
+        const c = colors[Math.floor(Math.random() * colors.length)];
+        const petal = this.add.ellipse(x, y, sz * 1.5, sz, c, 0.6 + Math.random() * 0.3).setDepth(-2);
+        
+        const drift = Phaser.Math.Between(-120, 120) * DPR;
+        const fallTime = 8000 + Math.random() * 6000;
+        
+        this.tweens.add({
+          targets: petal,
+          x: x + drift,
+          y: RH + 20 * DPR,
+          angle: 360 + Math.random() * 720,
+          alpha: 0,
+          duration: fallTime,
+          ease: 'Sine.easeInOut',
+          onComplete: () => petal.destroy()
+        });
+      }
+    });
+
+    // ✨ 新增：地面灵气涌动光效 ✨
+    this.time.addEvent({
+      delay: 2000, loop: true,
+      callback: () => {
+        const x = Phaser.Math.Between(RW * 0.1, RW * 0.9);
+        const y = RH * GROUND_Y + Phaser.Math.Between(-10, 10) * DPR;
+        
+        for (let i = 0; i < 3; i++) {
+          const glow = this.add.circle(x, y, (2 + i * 2) * DPR, 0x80e0ff, 0.3 - i * 0.1).setDepth(-6);
+          this.tweens.add({
+            targets: glow,
+            scaleX: 3 + i,
+            scaleY: 0.5,
+            alpha: 0,
+            duration: 1500 + i * 300,
+            ease: 'Quad.easeOut',
+            onComplete: () => glow.destroy()
+          });
+        }
+      }
+    });
+
     const vig = this.add.graphics().setDepth(-1);
     vig.fillStyle(0x000000, 0.3);
     vig.fillRect(0, 0, RW, 40 * DPR);
@@ -296,40 +500,34 @@ class BattleScene extends Phaser.Scene {
   }
 
   update(_, delta) {
-    if (!this.battleActive || this.isWaiting || this.isExecuting) return;
+    if (!this.battleActive || this.isWaiting) return;
 
     for (const u of this.allUnits) {
-      if (!u.isDead) u.atb += u.getAtbSpeed() * this.atbSpeed * delta * 0.001;
+      if (!u.isDead && !u.isBench) u.atb += u.getAtbSpeed() * this.atbSpeed * delta * 0.001;
     }
     this._tickATB();
     this._tickOverhead();
 
     let best = null, maxAtb = 0;
     for (const u of this.allUnits) {
-      if (!u.isDead && u.atb >= 100 && u.atb > maxAtb) { maxAtb = u.atb; best = u; }
+      if (!u.isDead && !u.isBench && u.atb >= 100 && u.atb > maxAtb) { maxAtb = u.atb; best = u; }
     }
     if (best) {
       best.atb = 0;
       this.currentUnit = best;
       
-      // 回合开始：恢复AP，结算状态效果
       best.ap = best.maxAp;
       best.tickStatusEffects(this);
-      UI.refreshStatusIcons(best.name, best.statusEffects);
       this._refreshHP();
       
-      // 检查冻结状态
       if (best.hasStatus('冻结')) {
         UI.log(`${best.name} 被冻结，无法行动！`, 'system');
         best.removeStatus('冻结');
-        UI.refreshStatusIcons(best.name, best.statusEffects);
         return;
       }
       
       if (best.isPlayer) {
         this.isWaiting = true;
-        this.actionQueue = [];
-        UI.updateActionQueue([]);
         UI.showAction(this, best);
         const sp = this.sprites[best.name];
         if (sp) this.tweens.add({ targets: sp, alpha: { from: 1, to: 0.6 }, duration: 150, yoyo: true, repeat: 2 });
@@ -432,6 +630,14 @@ class BattleScene extends Phaser.Scene {
         ]
       }),
     ];
+    
+    // 3+2 轮换系统：前 3 人上场，后 2 人待机
+    this.activeAllies = this.playerUnits.slice(0, 3);
+    this.benchAllies = this.playerUnits.slice(3);
+    for (const u of this.benchAllies) {
+      u.isBench = true;
+    }
+    
     this.enemyUnits = [
       new BattleUnit('妖狼', false, {
         hp: 80, mp: 20, attack: 15, defense: 5, agility: 65, spirit: 5,
@@ -457,43 +663,154 @@ class BattleScene extends Phaser.Scene {
         ]
       }),
     ];
+    
     this.allUnits = [...this.playerUnits, ...this.enemyUnits];
-    for (const u of this.allUnits) u.atb = Math.random() * 20 + u.agility * 0.3;
+    for (const u of this.allUnits) {
+      if (!u.isBench) u.atb = Math.random() * 20 + u.agility * 0.3;
+    }
   }
 
-  // ─── Sprites (保持原有代码) ───
+  // ─── Sprites ───
   _spawnSprites() {
-    let allyIdx = 0, enemyIdx = 0;
+    let activeIdx = 0, enemyIdx = 0;
+    
     for (const u of this.allUnits) {
       const folder = SPRITE_MAP[u.name];
       if (!folder) continue;
-      const slots = u.isPlayer ? ALLY_SLOTS : ENEMY_SLOTS;
-      const idx = u.isPlayer ? allyIdx++ : enemyIdx++;
-      if (idx >= slots.length) continue;
-      const slot = slots[idx];
+      
+      if (u.isPlayer) {
+        if (u.isBench) continue; // 待机区的不显示
+        
+        if (activeIdx >= ALLY_SLOTS.length) continue;
+        const slot = ALLY_SLOTS[activeIdx++];
+        
+        const dir = 'right';
+        const sp = this.add.image(RW * slot.x, RH * slot.y, `${folder}_idle_${dir}`);
+        const texH = sp.texture.getSourceImage().height;
+        const sc = (CHAR_HEIGHT * DPR) / texH;
+        sp.setOrigin(0.5, 1.0); // 改为底部对齐
+        sp.setScale(sc);
+        sp.setDepth(Math.floor(RH * slot.y));
+        sp.setData('folder', folder);
+        sp.setData('dir', dir);
+        sp.setData('sc', sc);
+        sp.setData('slot', slot);
+        this.sprites[u.name] = sp;
+        this.basePos[u.name] = { x: RW * slot.x, y: RH * slot.y };
+        
+        // 添加阴影
+        const shadow = this.add.ellipse(RW * slot.x, RH * slot.y + 5 * DPR, 40 * DPR, 12 * DPR, 0x000000, 0.25);
+        shadow.setDepth(Math.floor(RH * slot.y) - 1);
+        this.shadows[u.name] = shadow;
+        
+        this._idleAnim(u.name);
+      } else {
+        if (enemyIdx >= ENEMY_SLOTS.length) continue;
+        const slot = ENEMY_SLOTS[enemyIdx++];
+        
+        const dir = 'left';
+        const sp = this.add.image(RW * slot.x, RH * slot.y, `${folder}_idle_${dir}`);
+        const texH = sp.texture.getSourceImage().height;
+        const sc = (CHAR_HEIGHT * DPR) / texH;
+        sp.setOrigin(0.5, 1.0);
+        sp.setScale(sc);
+        sp.setDepth(Math.floor(RH * slot.y));
+        sp.setData('folder', folder);
+        sp.setData('dir', dir);
+        sp.setData('sc', sc);
+        sp.setData('slot', slot);
+        this.sprites[u.name] = sp;
+        this.basePos[u.name] = { x: RW * slot.x, y: RH * slot.y };
+        
+        const shadow = this.add.ellipse(RW * slot.x, RH * slot.y + 5 * DPR, 40 * DPR, 12 * DPR, 0x000000, 0.25);
+        shadow.setDepth(Math.floor(RH * slot.y) - 1);
+        this.shadows[u.name] = shadow;
+        
+        this._idleAnim(u.name);
+      }
+    }
+    
+    // 创建头顶 HP 条
+    for (const u of this.activeAllies) {
+      this._createHPBar(u.name);
+    }
+    for (const u of this.enemyUnits) {
+      this._createHPBar(u.name);
+    }
+  }
 
-      const dir = u.isPlayer ? 'right' : 'left';
-      const sp = this.add.image(RW * slot.x, RH * slot.y, `${folder}_idle_${dir}`);
-      const texH = sp.texture.getSourceImage().height;
-      const sc = (CHAR_HEIGHT * DPR) / texH;
-      sp.setOrigin(0.5, 0.5);
-      sp.setScale(sc);
-      sp.setDepth(Math.floor(RH * slot.y));
-      sp.setData('folder', folder);
-      sp.setData('dir', dir);
-      sp.setData('sc', sc);
-      sp.setData('slot', slot);
-      this.sprites[u.name] = sp;
-      this.basePos[u.name] = { x: RW * slot.x, y: RH * slot.y };
-      this._idleAnim(u.name);
+  _createHPBar(name) {
+    const u = this.allUnits.find(x => x.name === name);
+    if (!u) return;
+    
+    const sp = this.sprites[name];
+    if (!sp) return;
+    
+    const barW = 80 * DPR;
+    const barH = 6 * DPR;
+    const offsetY = -sp.displayHeight - 8 * DPR;
+    
+    const graphics = this.add.graphics();
+    graphics.setDepth(9999);
+    
+    this.hpBars[name] = {
+      graphics: graphics,
+      offsetY: offsetY,
+      barW: barW,
+      barH: barH,
+    };
+  }
+
+  _updateHPBar(name) {
+    const u = this.allUnits.find(x => x.name === name);
+    if (!u || u.isBench) return;
+    
+    const sp = this.sprites[name];
+    if (!sp || !sp.visible) return;
+    
+    const bar = this.hpBars[name];
+    if (!bar) return;
+    
+    const g = bar.graphics;
+    g.clear();
+    
+    const x = sp.x;
+    const y = sp.y + bar.offsetY;
+    
+    // 背景
+    g.fillStyle(0x000000, 0.6);
+    g.fillRect(x - bar.barW / 2, y, bar.barW, bar.barH);
+    
+    // HP 条
+    const hpRatio = u.hp / u.maxHp;
+    const hpColor = u.isPlayer ? 0x40e860 : 0xe84040;
+    g.fillStyle(hpColor, 1);
+    g.fillRect(x - bar.barW / 2, y, bar.barW * hpRatio, bar.barH);
+    
+    // 边框
+    g.lineStyle(1, u.isPlayer ? 0x60ffa0 : 0xff6060, 0.8);
+    g.strokeRect(x - bar.barW / 2, y, bar.barW, bar.barH);
+  }
+
+  _hideHPBar(name) {
+    const bar = this.hpBars[name];
+    if (bar) {
+      bar.graphics.clear();
     }
   }
 
   _idleAnim(name) {
     const sp = this.sprites[name], bp = this.basePos[name];
     if (!sp) return;
-    this.tweens.add({ targets: sp, y: { from: bp.y - 3, to: bp.y + 3 }, duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    this.tweens.add({ targets: sp, x: { from: bp.x - 1.5, to: bp.x + 1.5 }, duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    const shadow = this.shadows[name];
+    
+    this.tweens.add({ targets: sp, y: { from: bp.y - 3 * DPR, to: bp.y + 3 * DPR }, duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: sp, x: { from: bp.x - 1.5 * DPR, to: bp.x + 1.5 * DPR }, duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    
+    if (shadow) {
+      this.tweens.add({ targets: shadow, x: { from: bp.x - 1.5 * DPR, to: bp.x + 1.5 * DPR }, duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+    
     const sc = sp.getData('sc');
     this.tweens.add({ targets: sp, scaleX: { from: sc * 0.998, to: sc * 1.005 }, scaleY: { from: sc * 0.998, to: sc * 1.005 }, duration: 2500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   }
@@ -517,8 +834,8 @@ class BattleScene extends Phaser.Scene {
       const sc = sp.getData('sc');
       sp.setScale(sc);
       this.tweens.killTweensOf(sp);
-      this.tweens.add({ targets: sp, x: { from: bp.x - 3, to: bp.x + 3 }, duration: 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-      this.tweens.add({ targets: sp, y: { from: bp.y - 2, to: bp.y + 4 }, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.tweens.add({ targets: sp, x: { from: bp.x - 3 * DPR, to: bp.x + 3 * DPR }, duration: 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.tweens.add({ targets: sp, y: { from: bp.y - 2 * DPR, to: bp.y + 4 * DPR }, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       this.tweens.add({ targets: sp, alpha: { from: 1.0, to: 0.6 }, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       sp.setTint(0xff8888);
       return;
@@ -532,7 +849,7 @@ class BattleScene extends Phaser.Scene {
     this._idleAnim(name);
   }
 
-  // ─── Enhanced Animations (保持原有代码) ───
+  // ─── Animations ───
   _shake(intensity = 6, dur = 150) {
     this.cameras.main.shake(dur, intensity / 1000);
   }
@@ -560,6 +877,7 @@ class BattleScene extends Phaser.Scene {
             this._animHit(tgt);
             this._shake(8, 120);
             this._flash(0xffffff, 60);
+            Audio.playSkillSound('物理');
           }
         },
         { x: tbp.x - dir * 80 * DPR, duration: 60, ease: 'Quad.easeOut' },
@@ -637,16 +955,6 @@ class BattleScene extends Phaser.Scene {
         },
       ]
     });
-    this.time.delayedCall(500, () => {
-      if (sp.tintTopLeft !== 0xffffff) { sp.clearTint(); }
-    });
-    this.time.delayedCall(800, () => {
-      const u = this.allUnits.find(x => x.name === tgt);
-      if (u && u.hp > 0 && sp.tintTopLeft !== 0xffffff) {
-        sp.clearTint();
-        this._resetIdle(tgt);
-      }
-    });
   }
 
   _animDefeat(name) {
@@ -660,6 +968,11 @@ class BattleScene extends Phaser.Scene {
 
     const sc = sp.getData('sc');
     const baseY = sp.y;
+    
+    const shadow = this.shadows[name];
+    if (shadow) {
+      this.tweens.add({ targets: shadow, alpha: 0, duration: 600 });
+    }
 
     if (isAlly) {
       this.tweens.chain({
@@ -670,7 +983,7 @@ class BattleScene extends Phaser.Scene {
             alpha: 1.0, duration: 700, ease: 'Bounce.easeOut' },
         ]
       });
-      UI.hideOverhead(name);
+      this._hideHPBar(name);
     } else {
       this.tweens.chain({
         targets: sp,
@@ -679,7 +992,7 @@ class BattleScene extends Phaser.Scene {
           { y: baseY + 40 * DPR, scaleY: sc * 0.7, alpha: 0.5,
             duration: 600, ease: 'Bounce.easeOut' },
           { alpha: 0, duration: 500, ease: 'Quad.easeIn',
-            onComplete: () => { sp.setVisible(false); UI.hideOverhead(name); }
+            onComplete: () => { sp.setVisible(false); this._hideHPBar(name); }
           },
         ]
       });
@@ -705,7 +1018,7 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
-  _animCast(caster, tgt) {
+  _animCast(caster, tgt, element = '无') {
     const sp = this.sprites[caster], bp = this.basePos[caster];
     if (!sp) return;
     this.tweens.killTweensOf(sp);
@@ -737,6 +1050,7 @@ class BattleScene extends Phaser.Scene {
         this._fxFireExplosion(tgt);
         this._animHit(tgt);
         this._shake(6, 100);
+        Audio.playSkillSound(element);
       });
       sp.clearTint();
       this.time.delayedCall(600, () => this._resetIdle(caster));
@@ -852,6 +1166,8 @@ class BattleScene extends Phaser.Scene {
     const bar = document.getElementById('atb-bar');
     bar.querySelectorAll('.atb-icon').forEach(e => e.remove());
     for (const u of this.allUnits) {
+      if (u.isBench) continue; // 待机区的不显示
+      
       const folder = SPRITE_MAP[u.name];
       const side = u.isPlayer ? 'ally' : 'enemy';
       const el = document.createElement('div');
@@ -868,6 +1184,8 @@ class BattleScene extends Phaser.Scene {
   _tickATB() {
     const trackW = GW - 100;
     for (const u of this.allUnits) {
+      if (u.isBench) continue;
+      
       const el = document.getElementById(`atb-${u.name}`);
       if (!el) continue;
       const pct = Math.min(u.atb / 100, 1);
@@ -876,80 +1194,22 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
-  // ─── Side Panel HP System ───
-  _buildOverhead() {
-    const allyPanel = document.getElementById('ally-panel');
-    const enemyPanel = document.getElementById('enemy-panel');
-    allyPanel.innerHTML = '';
-    enemyPanel.innerHTML = '';
-
-    for (const u of this.allUnits) {
-      const folder = SPRITE_MAP[u.name];
-      const side = u.isPlayer ? 'ally' : 'enemy';
-      const panel = u.isPlayer ? allyPanel : enemyPanel;
-
-      const el = document.createElement('div');
-      el.className = `sp-unit sp-${side}`;
-      el.id = `sp-${u.name}`;
-
-      let h = `<div class="sp-row">`;
-      h += `<img class="sp-portrait" src="assets/sprites/portraits/${folder}.png">`;
-      h += `<div class="sp-info">`;
-      h += `<div class="sp-name ${side}">${u.name}</div>`;
-      h += `<div class="sp-bar-wrap"><div class="sp-bar sp-hp-${side}" id="spf-hp-${u.name}"></div></div>`;
-      h += `<div class="sp-nums" id="spt-hp-${u.name}">${u.hp}/${u.maxHp}</div>`;
-      if (u.isPlayer) {
-        h += `<div class="sp-bar-wrap mp"><div class="sp-bar sp-mp" id="spf-mp-${u.name}"></div></div>`;
-        h += `<div class="sp-nums mp" id="spt-mp-${u.name}">${u.mp}/${u.maxMp}</div>`;
-      }
-      h += `<div class="sp-status" id="status-${u.name}"></div>`;
-      h += `</div></div>`;
-      el.innerHTML = h;
-      panel.appendChild(el);
-
-      const tag = document.createElement('div');
-      tag.className = `name-tag tag-${side}`;
-      tag.id = `tag-${u.name}`;
-      tag.textContent = u.name;
-      document.getElementById('overhead-bars').appendChild(tag);
-    }
-  }
-
   _tickOverhead() {
     for (const u of this.allUnits) {
-      const sp = this.sprites[u.name];
-      const tag = document.getElementById(`tag-${u.name}`);
-      if (!sp || !tag) continue;
-      if (!sp.visible) { tag.style.display = 'none'; continue; }
-      tag.style.display = '';
-      const cx = sp.x / DPR, cy = sp.y / DPR;
-      const halfH = (sp.displayHeight / DPR) / 2;
-      tag.style.left = `${cx}px`;
-      tag.style.top = `${cy - halfH - 14}px`;
+      if (u.isBench) continue;
+      
+      this._updateHPBar(u.name);
     }
     this._refreshHP();
   }
 
   _refreshHP() {
-    for (const u of this.allUnits) {
-      const hf = document.getElementById(`spf-hp-${u.name}`);
-      const ht = document.getElementById(`spt-hp-${u.name}`);
-      if (hf) hf.style.width = `${(u.hp / u.maxHp) * 100}%`;
-      if (ht) ht.textContent = `${u.hp}/${u.maxHp}`;
-      if (u.isPlayer) {
-        const mf = document.getElementById(`spf-mp-${u.name}`);
-        const mt = document.getElementById(`spt-mp-${u.name}`);
-        if (mf) mf.style.width = `${(u.mp / u.maxMp) * 100}%`;
-        if (mt) mt.textContent = `${u.mp}/${u.maxMp}`;
-      }
-      const el = document.getElementById(`sp-${u.name}`);
-      if (el) el.classList.toggle('dead', u.isDead);
-    }
+    // 头顶 HP 条已经在 _tickOverhead 中更新了
   }
 
   // ─── Combat Logic ───
   _enemyAI(unit) {
-    const alive = this.playerUnits.filter(u => !u.isDead);
+    const alive = this.activeAllies.filter(u => !u.isDead);
     if (!alive.length) { this._checkEnd(); return; }
 
     const sorted = [...alive].sort((a, b) => a.hp - b.hp);
@@ -981,9 +1241,16 @@ class BattleScene extends Phaser.Scene {
       UI.log(`[亡] ${tgt.name} 被击败了！`, 'kill');
       this.time.delayedCall(500, () => { if (!this.defeatedSet.has(tgt.name)) { this.defeatedSet.add(tgt.name); this._animDefeat(tgt.name); } });
     }
-    this.isWaiting = false;
-    this.currentUnit = null;
-    this._checkEnd();
+    
+    // AP 用完后才结束回合
+    atk.ap -= 1;
+    if (atk.ap > 0 && atk.isPlayer) {
+      UI.showAction(this, atk);
+    } else {
+      this.isWaiting = false;
+      this.currentUnit = null;
+      this._checkEnd();
+    }
   }
 
   _doSkill(atk, skill, tgt) {
@@ -991,15 +1258,19 @@ class BattleScene extends Phaser.Scene {
     
     atk.ap -= skill.apCost;
     
+    // 我方角色语音播报技能名
+    if (atk.isPlayer) {
+      Audio.speakSkillName(skill.name);
+    }
+    
     let power = skill.power;
     if (skill.damageType === 'physical') power += atk.attack;
     else if (skill.damageType === 'magical') power += atk.spirit * 2;
 
-    // ─── Heal skills ───
     if (skill.damageType === 'heal') {
       const amt = Math.floor(power + atk.spirit * (skill.power / 100));
       if (skill.targetType === 'all_ally') {
-        const allies = this.playerUnits.filter(u => !u.isDead);
+        const allies = this.activeAllies.filter(u => !u.isDead);
         for (const a of allies) {
           a.hp = Math.min(a.maxHp, a.hp + amt);
           UI.floatDmg(this, a.name, amt, true);
@@ -1015,11 +1286,9 @@ class BattleScene extends Phaser.Scene {
         UI.floatDmg(this, atk.name, amt, true);
       }
       
-      // 应用技能效果
       for (const eff of skill.effects) {
         if (eff.type === 'buff') {
           tgt.addStatus(eff.name, 'buff', eff.duration, 1, STATUS_ICONS[eff.name] || '•');
-          UI.refreshStatusIcons(tgt.name, tgt.statusEffects);
         } else if (eff.type === 'cleanse') {
           if (eff.poison) {
             tgt.removeStatus('中毒');
@@ -1030,7 +1299,6 @@ class BattleScene extends Phaser.Scene {
               tgt.removeStatus(debuffs[0].name);
             }
           }
-          UI.refreshStatusIcons(tgt.name, tgt.statusEffects);
         } else if (eff.type === 'ap_boost') {
           tgt.ap += eff.amount;
           UI.log(`${tgt.name} 获得 ${eff.amount} 行动点！`, 'heal');
@@ -1039,39 +1307,44 @@ class BattleScene extends Phaser.Scene {
       
       this._animHeal(atk.name);
       this._refreshHP();
-      this.isWaiting = false;
-      this.currentUnit = null;
+      
+      if (atk.ap > 0 && atk.isPlayer) {
+        UI.showAction(this, atk);
+      } else {
+        this.isWaiting = false;
+        this.currentUnit = null;
+      }
       return;
     }
 
-    // ─── Buff/Debuff skills ───
     if (skill.damageType === 'buff' || skill.damageType === 'debuff') {
       UI.log(`[灵] ${atk.name} 使用 ${skill.name}！`, 'skill');
       
       for (const eff of skill.effects) {
         if (eff.type === 'buff' || eff.type === 'debuff') {
           tgt.addStatus(eff.name, eff.type, eff.duration, eff.stacks || 1, STATUS_ICONS[eff.name] || '•');
-          UI.refreshStatusIcons(tgt.name, tgt.statusEffects);
         }
       }
       
       this._animHeal(atk.name);
       this._refreshHP();
-      this.isWaiting = false;
-      this.currentUnit = null;
+      
+      if (atk.ap > 0 && atk.isPlayer) {
+        UI.showAction(this, atk);
+      } else {
+        this.isWaiting = false;
+        this.currentUnit = null;
+      }
       return;
     }
 
-    // ─── Damage skills ───
     const targets = skill.targetType === 'all'
-      ? (atk.isPlayer ? this.enemyUnits : this.playerUnits).filter(u => !u.isDead)
+      ? (atk.isPlayer ? this.enemyUnits : this.activeAllies).filter(u => !u.isDead)
       : [tgt];
 
     for (const t of targets) {
-      // 五行克制
       const elementMul = getElementMultiplier(skill.element, t.element);
       
-      // 剑意加成 (云逸)
       let swordWillBonus = 1.0;
       if (skill.name === '万剑归宗') {
         const swordWill = atk.statusEffects.filter(s => s.name === '剑意');
@@ -1080,13 +1353,11 @@ class BattleScene extends Phaser.Scene {
         }
       }
       
-      // 易伤加成
       let vulnBonus = 1.0;
       if (t.hasStatus('易伤')) {
         vulnBonus = 1.25;
       }
       
-      // 蚀骨销魂组合技
       let comboBonus = 1.0;
       if (skill.name === '蚀骨销魂' && t.hasStatus('剧毒') && t.hasStatus('心神不宁')) {
         comboBonus = 2.5;
@@ -1101,10 +1372,9 @@ class BattleScene extends Phaser.Scene {
       if (elementMul < 1.0) logMsg += ' (被克)';
       UI.log(logMsg, 'skill');
       
-      this._animCast(atk.name, t.name);
+      this._animCast(atk.name, t.name, skill.element);
       UI.floatDmg(this, t.name, actual);
       
-      // 应用技能效果
       for (const eff of skill.effects) {
         if (eff.type === 'debuff') {
           if (eff.chance && Math.random() > eff.chance) continue;
@@ -1112,10 +1382,8 @@ class BattleScene extends Phaser.Scene {
           if (eff.condition && !eff.condition.every(s => t.hasStatus(s))) continue;
           
           t.addStatus(eff.name, 'debuff', eff.duration, eff.stacks || 1, STATUS_ICONS[eff.name] || '•');
-          UI.refreshStatusIcons(t.name, t.statusEffects);
         } else if (eff.type === 'self') {
           atk.addStatus(eff.name, 'buff', eff.duration, eff.stacks || 1, STATUS_ICONS[eff.name] || '•');
-          UI.refreshStatusIcons(atk.name, atk.statusEffects);
         }
       }
       
@@ -1126,16 +1394,105 @@ class BattleScene extends Phaser.Scene {
     }
     
     this._refreshHP();
-    this.isWaiting = false;
-    this.currentUnit = null;
-    this._checkEnd();
+    
+    if (atk.ap > 0 && atk.isPlayer) {
+      UI.showAction(this, atk);
+    } else {
+      this.isWaiting = false;
+      this.currentUnit = null;
+      this._checkEnd();
+    }
+  }
+
+  // ✨ 3+2 轮换：换人 ✨
+  swapUnit(activeUnit, benchUnit) {
+    if (!activeUnit || !benchUnit) return;
+    if (activeUnit.ap < 1) {
+      UI.log('行动点不足，无法换人！', 'system');
+      return;
+    }
+    
+    activeUnit.ap -= 1;
+    
+    // 交换上场/待机状态
+    activeUnit.isBench = true;
+    benchUnit.isBench = false;
+    benchUnit.atb = 0;
+    
+    // 更新列表
+    const activeIdx = this.activeAllies.indexOf(activeUnit);
+    const benchIdx = this.benchAllies.indexOf(benchUnit);
+    
+    if (activeIdx >= 0 && benchIdx >= 0) {
+      this.activeAllies[activeIdx] = benchUnit;
+      this.benchAllies[benchIdx] = activeUnit;
+    }
+    
+    // 隐藏旧精灵
+    const oldSp = this.sprites[activeUnit.name];
+    if (oldSp) {
+      oldSp.setVisible(false);
+    }
+    this._hideHPBar(activeUnit.name);
+    const oldShadow = this.shadows[activeUnit.name];
+    if (oldShadow) {
+      oldShadow.setVisible(false);
+    }
+    
+    // 显示新精灵
+    const folder = SPRITE_MAP[benchUnit.name];
+    const slot = ALLY_SLOTS[activeIdx];
+    
+    const dir = 'right';
+    const sp = this.add.image(RW * slot.x, RH * slot.y, `${folder}_idle_${dir}`);
+    const texH = sp.texture.getSourceImage().height;
+    const sc = (CHAR_HEIGHT * DPR) / texH;
+    sp.setOrigin(0.5, 1.0);
+    sp.setScale(sc);
+    sp.setDepth(Math.floor(RH * slot.y));
+    sp.setData('folder', folder);
+    sp.setData('dir', dir);
+    sp.setData('sc', sc);
+    sp.setData('slot', slot);
+    this.sprites[benchUnit.name] = sp;
+    this.basePos[benchUnit.name] = { x: RW * slot.x, y: RH * slot.y };
+    
+    const shadow = this.add.ellipse(RW * slot.x, RH * slot.y + 5 * DPR, 40 * DPR, 12 * DPR, 0x000000, 0.25);
+    shadow.setDepth(Math.floor(RH * slot.y) - 1);
+    this.shadows[benchUnit.name] = shadow;
+    
+    this._idleAnim(benchUnit.name);
+    this._createHPBar(benchUnit.name);
+    
+    // 重建 ATB
+    this._buildATB();
+    
+    UI.log(`${activeUnit.name} 退场，${benchUnit.name} 上场！`, 'system');
+    
+    // 继续当前角色的回合
+    if (activeUnit.ap > 0) {
+      UI.showAction(this, activeUnit);
+    } else {
+      this.isWaiting = false;
+      this.currentUnit = null;
+    }
   }
 
   _checkEnd() {
-    const ap = this.playerUnits.filter(u => !u.isDead);
+    const ap = this.activeAllies.filter(u => !u.isDead);
     const ae = this.enemyUnits.filter(u => !u.isDead);
-    if (ae.length === 0) { this.battleActive = false; UI.log('[胜] 战斗胜利！', 'system'); UI.showResult(true); }
-    else if (ap.length === 0) { this.battleActive = false; UI.log('[亡] 战斗失败...', 'system'); UI.showResult(false); }
+    if (ae.length === 0) { 
+      this.battleActive = false; 
+      UI.log('[胜] 战斗胜利！', 'system'); 
+      UI.showResult(true); 
+      Audio.stopBGM();
+    }
+    else if (ap.length === 0) { 
+      this.battleActive = false; 
+      UI.log('[亡] 战斗失败...', 'system'); 
+      UI.showResult(false); 
+      Audio.stopBGM();
+    }
   }
 }
 
@@ -1166,28 +1523,6 @@ const UI = {
     setTimeout(() => el.remove(), 1000);
   },
 
-  hideOverhead(name) {
-    const tag = document.getElementById(`tag-${name}`);
-    if (tag) tag.style.display = 'none';
-    const sp = document.getElementById(`sp-${name}`);
-    if (sp) sp.classList.add('dead');
-  },
-
-  refreshStatusIcons(name, statusEffects) {
-    const container = document.getElementById(`status-${name}`);
-    if (!container) return;
-    
-    container.innerHTML = '';
-    for (const s of statusEffects) {
-      const icon = document.createElement('span');
-      icon.className = `status-icon status-${s.type}`;
-      icon.textContent = s.icon;
-      icon.title = `${s.name} (${s.duration}回合)`;
-      if (s.stacks > 1) icon.textContent += s.stacks;
-      container.appendChild(icon);
-    }
-  },
-
   showAction(scene, unit) {
     const panel = document.getElementById('action-panel');
     const folder = SPRITE_MAP[unit.name];
@@ -1200,35 +1535,21 @@ const UI = {
 
     // 普通攻击
     const ab = document.createElement('button');
-    ab.className = 'btn-xianxia';
+    ab.className = 'btn-skill';
     ab.disabled = unit.ap < 1;
-    ab.innerHTML = `<div class="btn-name">⚔ 普通攻击</div><div class="btn-stats">AP:1  MP:0  ATK:${unit.attack}</div>`;
+    ab.innerHTML = `<div class="skill-icon">⚔</div><div class="skill-name">普攻</div><div class="skill-cost">AP:1</div>`;
     ab.onclick = () => {
       scene.selectedSkill = null;
       UI.showTargets(scene);
     };
     bc.appendChild(ab);
 
-    // 防御
-    const db = document.createElement('button');
-    db.className = 'btn-xianxia';
-    db.innerHTML = `<div class="btn-name">🛡️ 防御</div><div class="btn-stats">AP:全部  结束回合</div>`;
-    db.onclick = () => {
-      UI.log(`${unit.name} 进入防御姿态`, 'system');
-      panel.classList.add('hidden');
-      unit.ap = 0;
-      scene.isWaiting = false;
-      scene.currentUnit = null;
-    };
-    bc.appendChild(db);
-
     // 技能
     for (const sk of unit.skills) {
       const b = document.createElement('button');
-      b.className = 'btn-xianxia';
+      b.className = 'btn-skill';
       b.disabled = unit.mp < sk.mpCost || unit.ap < sk.apCost;
       
-      // 检查是否可以触发连击效果
       let comboClass = '';
       if (sk.name === '三叠剑意' && scene.enemyUnits.some(e => !e.isDead && e.hasStatus('破甲'))) {
         comboClass = ' combo-ready';
@@ -1243,8 +1564,8 @@ const UI = {
       b.className += comboClass;
       
       const ico = SKILL_ICONS[sk.name] || '🔮';
-      const elementTag = sk.element !== '无' ? `<span class="element-tag">${sk.element}</span>` : '';
-      b.innerHTML = `<div class="btn-name">${ico} ${sk.name} ${elementTag}</div><div class="btn-stats">AP:${sk.apCost}  MP:${sk.mpCost}  威力:${sk.power}</div><div class="btn-desc">${sk.desc}</div>`;
+      const elementTag = sk.element !== '无' ? `<span class="element-badge">${sk.element}</span>` : '';
+      b.innerHTML = `<div class="skill-icon">${ico}</div><div class="skill-name">${sk.name.slice(0, 4)}${elementTag}</div><div class="skill-cost">AP:${sk.apCost} MP:${sk.mpCost}</div>`;
       b.onclick = () => {
         scene.selectedSkill = sk;
         if (sk.targetType === 'self') { panel.classList.add('hidden'); scene._doSkill(unit, sk, unit); }
@@ -1256,17 +1577,15 @@ const UI = {
       bc.appendChild(b);
     }
     
-    // 结束回合按钮
-    const eb = document.createElement('button');
-    eb.className = 'btn-end-turn';
-    eb.textContent = '结束回合';
-    eb.onclick = () => {
-      panel.classList.add('hidden');
-      unit.ap = 0;
-      scene.isWaiting = false;
-      scene.currentUnit = null;
+    // ✨ 换人按钮 ✨
+    const swapBtn = document.createElement('button');
+    swapBtn.className = 'btn-skill btn-swap';
+    swapBtn.disabled = unit.ap < 1 || scene.benchAllies.filter(u => !u.isDead).length === 0;
+    swapBtn.innerHTML = `<div class="skill-icon">🔄</div><div class="skill-name">换人</div><div class="skill-cost">AP:1</div>`;
+    swapBtn.onclick = () => {
+      UI.showSwapPanel(scene, unit);
     };
-    bc.appendChild(eb);
+    bc.appendChild(swapBtn);
     
     panel.classList.remove('hidden');
   },
@@ -1281,27 +1600,6 @@ const UI = {
       dot.className = i < current ? 'ap-dot active' : 'ap-dot';
       dot.textContent = '●';
       container.appendChild(dot);
-    }
-  },
-
-  updateActionQueue(queue) {
-    const container = document.getElementById('action-queue');
-    if (!container) return;
-    
-    if (queue.length === 0) {
-      container.style.display = 'none';
-      return;
-    }
-    
-    container.style.display = '';
-    const queueList = container.querySelector('.queue-list');
-    queueList.innerHTML = '';
-    
-    for (let i = 0; i < queue.length; i++) {
-      const item = document.createElement('div');
-      item.className = 'queue-item';
-      item.textContent = `${i + 1}. ${queue[i].name}`;
-      queueList.appendChild(item);
     }
   },
 
@@ -1338,7 +1636,7 @@ const UI = {
     const tc = document.getElementById('target-buttons');
     tc.innerHTML = '';
     document.querySelector('.panel-title').textContent = '选择友方目标';
-    for (const a of scene.playerUnits.filter(u => !u.isDead)) {
+    for (const a of scene.activeAllies.filter(u => !u.isDead)) {
       const b = document.createElement('button');
       b.className = 'btn-target';
       b.style.borderColor = 'rgba(64,232,96,0.4)';
@@ -1349,6 +1647,30 @@ const UI = {
       };
       tc.appendChild(b);
     }
+
+    panel.classList.remove('hidden');
+  },
+
+  // ✨ 显示换人面板 ✨
+  showSwapPanel(scene, activeUnit) {
+    document.getElementById('action-panel').classList.add('hidden');
+    const panel = document.getElementById('target-panel');
+    const tc = document.getElementById('target-buttons');
+    tc.innerHTML = '';
+    document.querySelector('.panel-title').textContent = '选择替换角色';
+    
+    for (const b of scene.benchAllies.filter(u => !u.isDead)) {
+      const btn = document.createElement('button');
+      btn.className = 'btn-target';
+      btn.style.borderColor = 'rgba(64,232,224,0.4)';
+      btn.textContent = `${b.name} [${b.element}] HP:${b.hp}/${b.maxHp} MP:${b.mp}/${b.maxMp}`;
+      btn.onclick = () => {
+        panel.classList.add('hidden');
+        scene.swapUnit(activeUnit, b);
+      };
+      tc.appendChild(btn);
+    }
+    
     panel.classList.remove('hidden');
   },
 
@@ -1372,7 +1694,6 @@ window.game_cancelTarget = () => {
 
 window.game_restart = () => {
   document.getElementById('result-panel').classList.add('hidden');
-  document.getElementById('overhead-bars').innerHTML = '';
   document.getElementById('log-content').innerHTML = '';
   document.querySelectorAll('.atb-icon').forEach(e => e.remove());
   game.scene.getScene('BattleScene').scene.restart();

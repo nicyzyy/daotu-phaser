@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>道途 — 与天争命</title>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-<link rel="stylesheet" href="style.css?v=31">
+<link rel="stylesheet" href="style.css?v=32">
 </head>
 <body>
 <div id="game-wrapper">
@@ -24,18 +24,9 @@
       <div id="log-content"></div>
     </div>
 
-    <!-- Floating name tags -->
-    <div id="overhead-bars"></div>
-
-    <!-- Side HP Panels -->
+    <!-- Side HP Panels (已移除，HP 移到头顶) -->
     <div id="ally-panel" class="side-panel left"></div>
     <div id="enemy-panel" class="side-panel right"></div>
-
-    <!-- Action Queue (for future use) -->
-    <div id="action-queue" class="hidden">
-      <div class="queue-list"></div>
-      <button class="btn-xianxia" style="margin-top: 6px;">执行</button>
-    </div>
 
     <!-- Action Panel -->
     <div id="action-panel" class="hidden">
@@ -56,12 +47,12 @@
     <!-- Result Panel -->
     <div id="result-panel" class="hidden">
       <div id="result-text"></div>
-      <button id="result-btn" class="btn-xianxia" onclick="window.game_restart()">再战一局</button>
+      <button id="result-btn" onclick="window.game_restart()">再战一局</button>
     </div>
 
   </div>
 </div>
 
-<script src="game.js?v=31"></script>
+<script src="game.js?v=32"></script>
 </body>
 </html>
