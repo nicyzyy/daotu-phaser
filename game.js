@@ -20,54 +20,93 @@ class AudioSystem {
     }
   }
 
-  // BGM: 古风循环（模拟古琴/笛子）
+  // BGM: 战斗音乐（多层次、紧张感）
   startBGM() {
     this.init();
     this.stopBGM();
     
     const ctx = this.audioContext;
-    const notes = [220, 247, 277, 294, 330, 370, 415]; // 五声音阶
+    this.bgmGain.gain.value = 0.15;
     
-    const playNote = (freq, delay, duration) => {
-      setTimeout(() => {
-        if (!this.bgmOscillators.length) return;
-        
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-        
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.3);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-        
-        osc.connect(gain);
-        gain.connect(this.bgmGain);
-        
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + duration);
-      }, delay);
-    };
-    
-    const pattern = [0, 2, 4, 2, 1, 2, 0, -1];
-    let time = 0;
-    
-    const loop = () => {
+    // 低频鼓点节奏（每 0.8 秒）
+    const drumLoop = () => {
       if (!this.bgmOscillators.length) return;
       
+      const drum = ctx.createOscillator();
+      const drumGain = ctx.createGain();
+      drum.type = 'sine';
+      drum.frequency.value = 60;
+      drumGain.gain.setValueAtTime(0.3, ctx.currentTime);
+      drumGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      drum.connect(drumGain);
+      drumGain.connect(this.bgmGain);
+      drum.start(ctx.currentTime);
+      drum.stop(ctx.currentTime + 0.15);
+      
+      setTimeout(drumLoop, 800);
+    };
+    
+    // 战斗弦乐（锯齿波 + 低通滤波）
+    const stringLoop = () => {
+      if (!this.bgmOscillators.length) return;
+      
+      const notes = [220, 247, 277, 294, 330];
+      const pattern = [0, 2, 1, 3, 2, 4, 2, 1];
+      let time = 0;
+      
       for (let i = 0; i < pattern.length; i++) {
-        const idx = (pattern[i] + 7) % 7;
-        playNote(notes[idx] * 0.5, time, 1.8);
-        time += 1200;
+        setTimeout(() => {
+          if (!this.bgmOscillators.length) return;
+          
+          const osc = ctx.createOscillator();
+          const filter = ctx.createBiquadFilter();
+          const gain = ctx.createGain();
+          
+          osc.type = 'sawtooth';
+          osc.frequency.value = notes[pattern[i]] * 0.5;
+          filter.type = 'lowpass';
+          filter.frequency.value = 800;
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.2);
+          
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.bgmGain);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 1.2);
+        }, time);
+        time += 600;
       }
       
-      setTimeout(loop, time);
-      time = 0;
+      setTimeout(stringLoop, time);
+    };
+    
+    // 高音点缀（模拟古筝拨弦）
+    const pluckLoop = () => {
+      if (!this.bgmOscillators.length) return;
+      
+      const notes = [440, 494, 554, 587];
+      const note = notes[Math.floor(Math.random() * notes.length)];
+      
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = note;
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(this.bgmGain);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.4);
+      
+      setTimeout(pluckLoop, 2400 + Math.random() * 1600);
     };
     
     this.bgmOscillators.push(true);
-    loop();
+    drumLoop();
+    stringLoop();
+    setTimeout(pluckLoop, 1200);
   }
 
   stopBGM() {
@@ -135,18 +174,55 @@ class AudioSystem {
     osc.start(ctx.currentTime);
   }
 
-  // 我方角色语音播报技能名
+  // 我方角色语音播报技能名（优化版）
   speakSkillName(skillName) {
-    if (!this.speechSynthesis) return;
+    if (!this.speechSynthesis) {
+      // Fallback: 短促音效
+      this.playChargeSound();
+      return;
+    }
     
-    const utterance = new SpeechSynthesisUtterance(skillName);
-    utterance.lang = 'zh-CN';
-    utterance.rate = 1.2;
-    utterance.pitch = 1.1;
-    utterance.volume = 0.7;
+    // 先播放蓄力音效
+    this.playChargeSound();
     
-    this.speechSynthesis.cancel();
-    this.speechSynthesis.speak(utterance);
+    // 延迟播放语音
+    setTimeout(() => {
+      const utterance = new SpeechSynthesisUtterance(skillName);
+      utterance.lang = 'zh-CN';
+      utterance.rate = 1.3;  // 快速有力
+      utterance.pitch = 1.1;  // 稍高
+      utterance.volume = 0.8;
+      
+      // 尝试选择中文语音
+      const voices = this.speechSynthesis.getVoices();
+      const zhVoice = voices.find(v => v.lang.startsWith('zh'));
+      if (zhVoice) {
+        utterance.voice = zhVoice;
+      }
+      
+      this.speechSynthesis.cancel();
+      this.speechSynthesis.speak(utterance);
+    }, 80);
+  }
+  
+  // 蓄力音效
+  playChargeSound() {
+    this.init();
+    const ctx = this.audioContext;
+    
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(200, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.08);
   }
 }
 
@@ -318,17 +394,17 @@ const CHAR_HEIGHT = 200;
 const GROUND_Y = 0.68; // 地面线位置
 
 const ALLY_SLOTS = [
-  { x: 0.30, y: GROUND_Y - 0.10, row: 'front' },
-  { x: 0.28, y: GROUND_Y + 0.06, row: 'front' },
-  { x: 0.16, y: GROUND_Y - 0.17, row: 'back' },
+  { x: 0.22, y: GROUND_Y - 0.14, row: 'front' },  // 上
+  { x: 0.25, y: GROUND_Y,        row: 'front' },  // 中
+  { x: 0.22, y: GROUND_Y + 0.14, row: 'front' },  // 下
 ];
 
 const ENEMY_SLOTS = [
-  { x: 0.70, y: GROUND_Y - 0.10, row: 'front' },
-  { x: 0.72, y: GROUND_Y + 0.06, row: 'front' },
-  { x: 0.84, y: GROUND_Y - 0.17, row: 'back' },
-  { x: 0.86, y: GROUND_Y, row: 'back' },
-  { x: 0.84, y: GROUND_Y + 0.13, row: 'back' },
+  { x: 0.78, y: GROUND_Y - 0.14, row: 'front' },
+  { x: 0.75, y: GROUND_Y,        row: 'front' },
+  { x: 0.78, y: GROUND_Y + 0.14, row: 'front' },
+  { x: 0.81, y: GROUND_Y - 0.07, row: 'back' },
+  { x: 0.81, y: GROUND_Y + 0.07, row: 'back' },
 ];
 
 const GW = 1280, GH = 720;
@@ -359,7 +435,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=32';
+    const V = 'v=33';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -858,9 +934,9 @@ class BattleScene extends Phaser.Scene {
     this.cameras.main.flash(dur, (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff, true);
   }
 
-  _animAttack(atk, tgt) {
+  _animAttack(atk, tgt, onDone) {
     const sp = this.sprites[atk], bp = this.basePos[atk], tbp = this.basePos[tgt];
-    if (!sp) return;
+    if (!sp) { if (onDone) onDone(); return; }
     this.tweens.killTweensOf(sp);
     this._pose(atk, 'attack');
 
@@ -882,7 +958,10 @@ class BattleScene extends Phaser.Scene {
         },
         { x: tbp.x - dir * 80 * DPR, duration: 60, ease: 'Quad.easeOut' },
         { x: bp.x, scaleX: sc, scaleY: sc, duration: 300, ease: 'Cubic.easeOut',
-          onComplete: () => this._resetIdle(atk)
+          onComplete: () => {
+            this._resetIdle(atk);
+            if (onDone) this.time.delayedCall(50, onDone);
+          }
         },
       ]
     });
@@ -1018,9 +1097,9 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
-  _animCast(caster, tgt, element = '无') {
+  _animCast(caster, tgt, element = '无', onDone) {
     const sp = this.sprites[caster], bp = this.basePos[caster];
-    if (!sp) return;
+    if (!sp) { if (onDone) onDone(); return; }
     this.tweens.killTweensOf(sp);
     this._pose(caster, 'cast');
 
@@ -1053,7 +1132,10 @@ class BattleScene extends Phaser.Scene {
         Audio.playSkillSound(element);
       });
       sp.clearTint();
-      this.time.delayedCall(600, () => this._resetIdle(caster));
+      this.time.delayedCall(600, () => {
+        this._resetIdle(caster);
+        if (onDone) this.time.delayedCall(50, onDone);
+      });
     });
   }
 
@@ -1114,9 +1196,9 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
-  _animHeal(name) {
+  _animHeal(name, onDone) {
     const sp = this.sprites[name];
-    if (!sp) return;
+    if (!sp) { if (onDone) onDone(); return; }
     this.tweens.killTweensOf(sp);
     this._pose(name, 'cast');
 
@@ -1158,7 +1240,11 @@ class BattleScene extends Phaser.Scene {
       });
     }
 
-    this.time.delayedCall(700, () => { sp.clearTint(); this._resetIdle(name); });
+    this.time.delayedCall(700, () => {
+      sp.clearTint();
+      this._resetIdle(name);
+      if (onDone) this.time.delayedCall(50, onDone);
+    });
   }
 
   // ─── ATB Bar ───
@@ -1234,7 +1320,6 @@ class BattleScene extends Phaser.Scene {
     const dmg = atk.attack + Phaser.Math.Between(-3, 3);
     const actual = tgt.takeDamage(dmg);
     UI.log(`${atk.name} 攻击 ${tgt.name}，造成 ${actual} 伤害！`);
-    this._animAttack(atk.name, tgt.name);
     UI.floatDmg(this, tgt.name, actual);
     this._refreshHP();
     if (tgt.isDead) {
@@ -1242,15 +1327,19 @@ class BattleScene extends Phaser.Scene {
       this.time.delayedCall(500, () => { if (!this.defeatedSet.has(tgt.name)) { this.defeatedSet.add(tgt.name); this._animDefeat(tgt.name); } });
     }
     
-    // AP 用完后才结束回合
     atk.ap -= 1;
-    if (atk.ap > 0 && atk.isPlayer) {
-      UI.showAction(this, atk);
-    } else {
-      this.isWaiting = false;
-      this.currentUnit = null;
-      this._checkEnd();
-    }
+    
+    // 动画完成后才判断下一步
+    this._animAttack(atk.name, tgt.name, () => {
+      if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
+        this.isWaiting = true;
+        UI.showAction(this, atk);
+      } else {
+        this.isWaiting = false;
+        this.currentUnit = null;
+        this._checkEnd();
+      }
+    });
   }
 
   _doSkill(atk, skill, tgt) {
@@ -1267,6 +1356,7 @@ class BattleScene extends Phaser.Scene {
     if (skill.damageType === 'physical') power += atk.attack;
     else if (skill.damageType === 'magical') power += atk.spirit * 2;
 
+    // 治疗技能
     if (skill.damageType === 'heal') {
       const amt = Math.floor(power + atk.spirit * (skill.power / 100));
       if (skill.targetType === 'all_ally') {
@@ -1305,18 +1395,22 @@ class BattleScene extends Phaser.Scene {
         }
       }
       
-      this._animHeal(atk.name);
       this._refreshHP();
       
-      if (atk.ap > 0 && atk.isPlayer) {
-        UI.showAction(this, atk);
-      } else {
-        this.isWaiting = false;
-        this.currentUnit = null;
-      }
+      // 动画完成后才判断下一步
+      this._animHeal(atk.name, () => {
+        if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
+          this.isWaiting = true;
+          UI.showAction(this, atk);
+        } else {
+          this.isWaiting = false;
+          this.currentUnit = null;
+        }
+      });
       return;
     }
 
+    // Buff/Debuff 技能
     if (skill.damageType === 'buff' || skill.damageType === 'debuff') {
       UI.log(`[灵] ${atk.name} 使用 ${skill.name}！`, 'skill');
       
@@ -1326,18 +1420,22 @@ class BattleScene extends Phaser.Scene {
         }
       }
       
-      this._animHeal(atk.name);
       this._refreshHP();
       
-      if (atk.ap > 0 && atk.isPlayer) {
-        UI.showAction(this, atk);
-      } else {
-        this.isWaiting = false;
-        this.currentUnit = null;
-      }
+      // 动画完成后才判断下一步
+      this._animHeal(atk.name, () => {
+        if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
+          this.isWaiting = true;
+          UI.showAction(this, atk);
+        } else {
+          this.isWaiting = false;
+          this.currentUnit = null;
+        }
+      });
       return;
     }
 
+    // 攻击技能
     const targets = skill.targetType === 'all'
       ? (atk.isPlayer ? this.enemyUnits : this.activeAllies).filter(u => !u.isDead)
       : [tgt];
@@ -1372,7 +1470,6 @@ class BattleScene extends Phaser.Scene {
       if (elementMul < 1.0) logMsg += ' (被克)';
       UI.log(logMsg, 'skill');
       
-      this._animCast(atk.name, t.name, skill.element);
       UI.floatDmg(this, t.name, actual);
       
       for (const eff of skill.effects) {
@@ -1395,13 +1492,17 @@ class BattleScene extends Phaser.Scene {
     
     this._refreshHP();
     
-    if (atk.ap > 0 && atk.isPlayer) {
-      UI.showAction(this, atk);
-    } else {
-      this.isWaiting = false;
-      this.currentUnit = null;
-      this._checkEnd();
-    }
+    // 动画完成后才判断下一步
+    this._animCast(atk.name, tgt.name, skill.element, () => {
+      if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
+        this.isWaiting = true;
+        UI.showAction(this, atk);
+      } else {
+        this.isWaiting = false;
+        this.currentUnit = null;
+        this._checkEnd();
+      }
+    });
   }
 
   // ✨ 3+2 轮换：换人 ✨
@@ -1537,7 +1638,7 @@ const UI = {
     const ab = document.createElement('button');
     ab.className = 'btn-skill';
     ab.disabled = unit.ap < 1;
-    ab.innerHTML = `<div class="skill-icon">⚔</div><div class="skill-name">普攻</div><div class="skill-cost">AP:1</div>`;
+    ab.innerHTML = `<span class="ap-badge">1</span><div class="skill-icon">⚔</div><div class="skill-name">普攻</div><div class="skill-cost">MP:0</div>`;
     ab.onclick = () => {
       scene.selectedSkill = null;
       UI.showTargets(scene);
@@ -1565,7 +1666,7 @@ const UI = {
       
       const ico = SKILL_ICONS[sk.name] || '🔮';
       const elementTag = sk.element !== '无' ? `<span class="element-badge">${sk.element}</span>` : '';
-      b.innerHTML = `<div class="skill-icon">${ico}</div><div class="skill-name">${sk.name.slice(0, 4)}${elementTag}</div><div class="skill-cost">AP:${sk.apCost} MP:${sk.mpCost}</div>`;
+      b.innerHTML = `<span class="ap-badge">${sk.apCost}</span><div class="skill-icon">${ico}</div><div class="skill-name">${sk.name.slice(0, 4)}${elementTag}</div><div class="skill-cost">MP:${sk.mpCost}</div>`;
       b.onclick = () => {
         scene.selectedSkill = sk;
         if (sk.targetType === 'self') { panel.classList.add('hidden'); scene._doSkill(unit, sk, unit); }
@@ -1581,7 +1682,7 @@ const UI = {
     const swapBtn = document.createElement('button');
     swapBtn.className = 'btn-skill btn-swap';
     swapBtn.disabled = unit.ap < 1 || scene.benchAllies.filter(u => !u.isDead).length === 0;
-    swapBtn.innerHTML = `<div class="skill-icon">🔄</div><div class="skill-name">换人</div><div class="skill-cost">AP:1</div>`;
+    swapBtn.innerHTML = `<span class="ap-badge">1</span><div class="skill-icon">🔄</div><div class="skill-name">换人</div><div class="skill-cost">MP:0</div>`;
     swapBtn.onclick = () => {
       UI.showSwapPanel(scene, unit);
     };
