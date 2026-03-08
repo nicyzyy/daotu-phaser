@@ -434,7 +434,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=40';
+    const V = 'v=41';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -582,7 +582,11 @@ class BattleScene extends Phaser.Scene {
 
   update(_, delta) {
     // Debug 状态显示
-    if (this._dbg) { this._dbg.textContent = `W:${this.isWaiting?1:0} CU:${this.currentUnit?.name||'-'} AP:${this.currentUnit?.ap??'-'} BA:${this.battleActive?1:0}`; }
+    if (this._dbg) { 
+      const ap = document.getElementById('action-panel');
+      const tp = document.getElementById('target-panel');
+      this._dbg.textContent = `W:${this.isWaiting?1:0} CU:${this.currentUnit?.name||'-'} AP:${this.currentUnit?.ap??'-'} BA:${this.battleActive?1:0} 面板:${ap?.classList.contains('hidden')?'隐':'显'} 目标:${tp?.classList.contains('hidden')?'隐':'显'}`;
+    }
     
     if (!this.battleActive) return;
     if (this.isWaiting) {
@@ -1661,6 +1665,7 @@ const UI = {
   },
 
   showAction(scene, unit) {
+    console.log('[UI] showAction called for', unit?.name, 'ap:', unit?.ap);
     const panel = document.getElementById('action-panel');
     const folder = SPRITE_MAP[unit.name];
     document.getElementById('action-portrait').src = `assets/sprites/poses/${folder}/idle_right.png`;
@@ -1738,6 +1743,7 @@ const UI = {
     bc.appendChild(endBtn);
     
     panel.classList.remove('hidden');
+    console.log('[UI] action-panel hidden?', panel.classList.contains('hidden'), 'display:', getComputedStyle(panel).display);
   },
 
   updateAPDisplay(current, max) {
