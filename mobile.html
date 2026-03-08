@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>道途 — 测试</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a1a; color:#dcc07a; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
+h1 { font-size:24px; margin-bottom:16px; }
+p { color:#aaa; margin-bottom:12px; font-size:14px; }
+.ok { color:#4f4; font-size:18px; }
+a { color:#4af; }
+</style>
+</head>
+<body>
+<h1>⚔️ 道途 — 与天争命</h1>
+<p class="ok">✅ 页面加载成功！</p>
+<p>设备: <span id="dev"></span></p>
+<p>屏幕: <span id="scr"></span></p>
+<p>内存: <span id="mem"></span></p>
+<p>WebGL: <span id="gl"></span></p>
+<br>
+<p><a href="https://nicyzyy.github.io/daotu-phaser/?v=44">→ 完整游戏版本</a></p>
+<script>
+document.getElementById('dev').textContent = navigator.userAgent.slice(0,80);
+document.getElementById('scr').textContent = screen.width+'x'+screen.height+' dpr:'+devicePixelRatio;
+document.getElementById('mem').textContent = navigator.deviceMemory ? navigator.deviceMemory+'GB' : '未知';
+try {
+  var c=document.createElement('canvas');
+  var gl=c.getContext('webgl2')||c.getContext('webgl');
+  document.getElementById('gl').textContent = gl ? gl.getParameter(gl.RENDERER) : '不支持';
+} catch(e) { document.getElementById('gl').textContent = '错误:'+e.message; }
+</script>
+</body>
+</html>
