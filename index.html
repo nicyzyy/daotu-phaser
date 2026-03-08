@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="screen-orientation" content="landscape">
 <title>道途 — 与天争命</title>
-<link rel="stylesheet" href="style.css?v=45">
+<link rel="stylesheet" href="style.css?v=46">
 <style>
 #webview-gate { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#0a0a1a; z-index:999999; color:#dcc07a; text-align:center; font-family:sans-serif; flex-direction:column; align-items:center; justify-content:center; padding:30px; }
 #webview-gate h2 { font-size:28px; margin-bottom:12px; }
@@ -21,10 +21,8 @@
 // 检测 WebView / 内嵌浏览器
 (function() {
   var ua = navigator.userAgent || '';
-  var isWebView = /\b(FBAN|FBAV|Instagram|Discord|Line|WeChat|MicroMessenger|QQ|Twitter|Snapchat)\b/i.test(ua)
-    || (/\bKHT\b/.test(ua) && /iPhone|iPad/.test(ua))  // Discord iOS WebView
-    || (!/Safari/.test(ua) && /AppleWebKit/.test(ua))    // iOS WebView without Safari
-    || (/wv\)/.test(ua));                                 // Android WebView
+  var isWebView = /\b(FBAN|FBAV|Instagram|Discord|Line|WeChat|MicroMessenger|QQ|Snapchat)\b/i.test(ua)
+    || (/wv\)/.test(ua) && /Android/.test(ua));  // Android WebView only
   
   if (isWebView) {
     document.addEventListener('DOMContentLoaded', function() {
@@ -56,17 +54,17 @@ if (!window._skipPhaser) {
   <h2>⚔️ 道途</h2>
   <div class="subtitle">与天争命</div>
   <p style="color:#ff9;margin-bottom:20px;">⚠️ 当前为内嵌浏览器，无法运行游戏</p>
-  <a class="open-btn" href="x-safari-https://nicyzyy.github.io/daotu-phaser/?v=45" id="safari-link">🌐 在 Safari 中打开</a>
+  <a class="open-btn" href="x-safari-https://nicyzyy.github.io/daotu-phaser/?v=46" id="safari-link">🌐 在 Safari 中打开</a>
   <div class="steps">
     或：点右下角 ··· → 「在浏览器中打开」<br>
     或：复制下方链接到 Chrome / Safari
   </div>
-  <button class="copy-btn" onclick="navigator.clipboard.writeText('https://nicyzyy.github.io/daotu-phaser/?v=45').then(function(){this.textContent='✅ 已复制！'}.bind(this))">📋 复制链接</button>
+  <button class="copy-btn" onclick="navigator.clipboard.writeText('https://nicyzyy.github.io/daotu-phaser/?v=46').then(function(){this.textContent='✅ 已复制！'}.bind(this))">📋 复制链接</button>
   <script>
     // iOS: x-safari-https 可直接跳转 Safari
     // Android: intent:// 跳转默认浏览器
     if (/Android/i.test(navigator.userAgent)) {
-      document.getElementById('safari-link').href = 'intent://nicyzyy.github.io/daotu-phaser/?v=45#Intent;scheme=https;end';
+      document.getElementById('safari-link').href = 'intent://nicyzyy.github.io/daotu-phaser/?v=46#Intent;scheme=https;end';
       document.getElementById('safari-link').textContent = '🌐 在浏览器中打开';
     }
   </script>
@@ -126,7 +124,7 @@ if (!window._skipPhaser) {
 <!-- 移动端全屏按钮 -->
 <button id="fullscreen-btn" onclick="toggleFullscreen()">⛶</button>
 
-<script src="game.js?v=45"></script>
+<script src="game.js?v=46"></script>
 <script>
 function toggleFullscreen() {
   const el = document.documentElement;

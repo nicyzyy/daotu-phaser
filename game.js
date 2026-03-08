@@ -435,7 +435,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=45';
+    const V = 'v=46';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     // 只预加载 idle + portrait（快速启动），其他 pose 延迟加载
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
@@ -459,7 +459,7 @@ class BattleScene extends Phaser.Scene {
     UI.log('[战] 战斗开始!', 'system');
     
     // 延迟加载其他 pose（不阻塞战斗开始）
-    const V = 'v=45';
+    const V = 'v=46';
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['attack', 'cast', 'hit', 'defeated']) {
         if (!this.textures.exists(`${folder}_${pose}_left`)) {
