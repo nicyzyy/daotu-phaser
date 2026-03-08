@@ -434,13 +434,12 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=42';
+    const V = 'v=43';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
+    // 只预加载 idle + portrait（快速启动），其他 pose 延迟加载
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
-      for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
-        this.load.image(`${folder}_${pose}_left`, `assets/sprites/poses/${folder}/${pose}_left.png?${V}`);
-        this.load.image(`${folder}_${pose}_right`, `assets/sprites/poses/${folder}/${pose}_right.png?${V}`);
-      }
+      this.load.image(`${folder}_idle_left`, `assets/sprites/poses/${folder}/idle_left.png?${V}`);
+      this.load.image(`${folder}_idle_right`, `assets/sprites/poses/${folder}/idle_right.png?${V}`);
       this.load.image(`${folder}_portrait`, `assets/sprites/portraits/${folder}.png?${V}`);
     }
   }
@@ -457,6 +456,18 @@ class BattleScene extends Phaser.Scene {
     this._buildATB();
     this.battleActive = true;
     UI.log('[战] 战斗开始!', 'system');
+    
+    // 延迟加载其他 pose（不阻塞战斗开始）
+    const V = 'v=43';
+    for (const [, folder] of Object.entries(SPRITE_MAP)) {
+      for (const pose of ['attack', 'cast', 'hit', 'defeated']) {
+        if (!this.textures.exists(`${folder}_${pose}_left`)) {
+          this.load.image(`${folder}_${pose}_left`, `assets/sprites/poses/${folder}/${pose}_left.png?${V}`);
+          this.load.image(`${folder}_${pose}_right`, `assets/sprites/poses/${folder}/${pose}_right.png?${V}`);
+        }
+      }
+    }
+    this.load.start();
     
     // Debug overlay
     const dbg = document.createElement('div');
