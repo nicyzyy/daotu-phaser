@@ -473,3 +473,199 @@ body {
   background: linear-gradient(135deg, rgba(100,100,130,0.7), rgba(60,60,80,0.9)) !important;
   border-color: rgba(180,180,200,0.7) !important;
 }
+
+/* ═══════════════════════════════════════════
+   📱 移动端适配
+   ═══════════════════════════════════════════ */
+
+/* 竖屏提示 */
+#rotate-hint {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.95);
+  z-index: 99999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.rotate-icon { font-size: 64px; animation: rotateAnim 2s ease-in-out infinite; }
+.rotate-text { font-size: 24px; color: #dcc07a; font-weight: bold; letter-spacing: 3px; }
+.rotate-sub { font-size: 14px; color: rgba(200,200,210,0.5); }
+@keyframes rotateAnim {
+  0%,100% { transform: rotate(0deg); }
+  25% { transform: rotate(90deg); }
+  75% { transform: rotate(90deg); }
+}
+
+/* 全屏按钮 */
+#fullscreen-btn {
+  display: none;
+  position: fixed;
+  top: 8px; right: 8px;
+  width: 36px; height: 36px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(201,168,76,0.4);
+  border-radius: 8px;
+  color: #dcc07a;
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 10000;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+#fullscreen-btn:active {
+  background: rgba(201,168,76,0.3);
+}
+
+/* ─── 竖屏检测 ─── */
+@media (orientation: portrait) and (max-width: 900px) {
+  #rotate-hint { display: flex !important; }
+  #game-wrapper, #fullscreen-btn { display: none !important; }
+}
+@media (orientation: landscape) and (max-width: 900px) {
+  #rotate-hint { display: none !important; }
+}
+
+/* ─── 移动端通用 ─── */
+@media (max-width: 1300px), (max-height: 750px) {
+  #fullscreen-btn { display: block; }
+  
+  /* 禁止长按选择 */
+  body {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  
+  /* 技能面板：4列布局更适合触控 */
+  #action-buttons {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+  }
+  
+  /* 技能按钮增大触控区 */
+  .btn-skill {
+    min-height: 62px !important;
+    padding: 6px 3px 5px !important;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .btn-skill:active {
+    transform: scale(0.95) !important;
+  }
+  .skill-icon { font-size: 20px !important; }
+  .skill-name { font-size: 10px !important; }
+  
+  /* 面板宽度自适应 */
+  #action-panel {
+    width: calc(100% - 20px) !important;
+    max-width: 700px;
+    padding: 8px 10px 8px !important;
+  }
+  
+  /* 头像缩小 */
+  #action-portrait {
+    width: 45px !important;
+    height: 56px !important;
+  }
+  
+  /* 战斗日志缩小 */
+  #battle-log {
+    width: 180px !important;
+    max-height: 120px !important;
+    font-size: 9px !important;
+    padding: 4px 6px !important;
+    bottom: 4px !important;
+    left: 4px !important;
+  }
+  #log-content { font-size: 9px !important; }
+  
+  /* ATB 栏紧凑 */
+  #atb-bar { height: 40px !important; }
+  .atb-icon { width: 30px !important; height: 30px !important; top: 5px !important; }
+  
+  /* 目标面板全宽 */
+  #target-panel {
+    width: calc(100% - 40px) !important;
+    max-width: 400px;
+  }
+  .btn-target {
+    padding: 12px !important;
+    font-size: 13px !important;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  /* 结果面板 */
+  #result-panel {
+    width: calc(100% - 40px) !important;
+    max-width: 400px;
+    padding: 30px 25px !important;
+  }
+  #result-text { font-size: 22px !important; }
+  #result-btn {
+    padding: 14px 30px !important;
+    font-size: 16px !important;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  /* 伤害数字稍小 */
+  .dmg-float { font-size: 18px !important; }
+}
+
+/* ─── 极小屏幕（iPhone SE 等） ─── */
+@media (max-height: 400px) and (orientation: landscape) {
+  #action-panel {
+    padding: 5px 8px 4px !important;
+  }
+  .panel-header {
+    margin-bottom: 4px !important;
+    padding-bottom: 3px !important;
+  }
+  #action-portrait {
+    width: 35px !important;
+    height: 44px !important;
+  }
+  #action-unit-name { font-size: 12px !important; }
+  .ap-display { font-size: 11px !important; }
+  .ap-dot { font-size: 12px !important; }
+  
+  #action-buttons {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 3px !important;
+  }
+  .btn-skill {
+    min-height: 48px !important;
+    padding: 4px 2px 3px !important;
+  }
+  .skill-icon { font-size: 16px !important; }
+  .skill-name { font-size: 8px !important; }
+  .skill-cost { font-size: 7px !important; }
+  .ap-badge {
+    width: 16px !important;
+    height: 16px !important;
+    font-size: 10px !important;
+    top: -3px !important;
+    right: -3px !important;
+  }
+  
+  #battle-log {
+    width: 140px !important;
+    max-height: 80px !important;
+  }
+  
+  #atb-bar { height: 32px !important; }
+  .atb-icon { width: 24px !important; height: 24px !important; top: 4px !important; }
+}
+
+/* ─── 安全区域（刘海屏） ─── */
+@supports (padding: env(safe-area-inset-left)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}

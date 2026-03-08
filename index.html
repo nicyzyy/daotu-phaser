@@ -2,10 +2,14 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="screen-orientation" content="landscape">
 <title>道途 — 与天争命</title>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-<link rel="stylesheet" href="style.css?v=35">
+<link rel="stylesheet" href="style.css?v=36">
 </head>
 <body>
 <div id="game-wrapper">
@@ -53,6 +57,35 @@
   </div>
 </div>
 
-<script src="game.js?v=35"></script>
+<!-- 竖屏提示 -->
+<div id="rotate-hint">
+  <div class="rotate-icon">📱↔️</div>
+  <div class="rotate-text">请横屏游戏</div>
+  <div class="rotate-sub">Please rotate your device</div>
+</div>
+
+<!-- 移动端全屏按钮 -->
+<button id="fullscreen-btn" onclick="toggleFullscreen()">⛶</button>
+
+<script src="game.js?v=36"></script>
+<script>
+function toggleFullscreen() {
+  const el = document.documentElement;
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen).call(el);
+    try { screen.orientation.lock('landscape').catch(()=>{}); } catch(e){}
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen).call(document);
+  }
+}
+// 首次触摸时自动全屏（移动端）
+let firstTouch = true;
+document.addEventListener('touchstart', function() {
+  if (firstTouch && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    firstTouch = false;
+    toggleFullscreen();
+  }
+}, { once: true });
+</script>
 </body>
 </html>

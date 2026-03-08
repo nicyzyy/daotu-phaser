@@ -434,7 +434,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=35';
+    const V = 'v=36';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -1857,6 +1857,7 @@ window.game_restart = () => {
 // ─── Responsive Scale ───
 function syncScale() {
   const w = document.getElementById('game-wrapper');
+  if (!w) return;
   const vw = window.innerWidth, vh = window.innerHeight;
   const scale = Math.min(vw / GW, vh / GH);
   w.style.transform = `scale(${scale})`;
@@ -1864,6 +1865,11 @@ function syncScale() {
   w.style.marginTop = `${(vh - GH * scale) / 2}px`;
 }
 window.addEventListener('resize', syncScale);
+window.addEventListener('orientationchange', () => setTimeout(syncScale, 200));
+// 处理iOS安全区域变化
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', syncScale);
+}
 
 // ─── Launch ───
 const config = {
@@ -1874,6 +1880,7 @@ const config = {
   backgroundColor: '#080a18',
   scene: [BattleScene],
   scale: { mode: Phaser.Scale.NONE },
+  input: { touch: true, mouse: true },
   render: { antialias: true, roundPixels: false, pixelArt: false },
 };
 
