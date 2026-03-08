@@ -185,25 +185,25 @@ body {
 
 /* ✨ AP 显示 ✨ */
 .ap-display {
-  font-size: 11px;
-  color: rgba(255,215,100,0.8);
-  font-weight: normal;
-  letter-spacing: 1px;
+  font-size: 14px;
+  color: #ffd84a;
+  font-weight: bold;
+  letter-spacing: 2px;
 }
 .ap-dots {
   display: inline-flex;
-  gap: 2px;
-  margin-left: 3px;
+  gap: 4px;
+  margin-left: 5px;
 }
 .ap-dot {
-  font-size: 9px;
-  color: rgba(100,100,110,0.4);
+  font-size: 16px;
+  color: rgba(100,100,110,0.3);
   text-shadow: 0 0 2px rgba(0,0,0,0.5);
   transition: all 0.2s;
 }
 .ap-dot.active {
-  color: #ffd84a;
-  text-shadow: 0 0 6px rgba(255,216,74,0.6);
+  color: #ff8800;
+  text-shadow: 0 0 10px rgba(255,136,0,0.9), 0 0 20px rgba(255,136,0,0.4);
   animation: apPulse 0.3s ease-out;
 }
 @keyframes apPulse {
@@ -305,22 +305,27 @@ body {
 /* ✨ AP 徽章（技能按钮右上角）✨ */
 .ap-badge {
   position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 16px;
-  height: 16px;
+  top: -4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ffd84a, #ff9944);
-  border: 1px solid rgba(255,255,255,0.6);
+  background: linear-gradient(135deg, #ffd84a, #ff6600);
+  border: 2px solid #fff;
   color: #fff;
-  font-size: 10px;
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 8px rgba(255,216,74,0.6);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  box-shadow: 0 0 12px rgba(255,102,0,0.8), 0 2px 4px rgba(0,0,0,0.5);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
   z-index: 10;
+  animation: ap-pulse 1.5s ease-in-out infinite;
+}
+@keyframes ap-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); box-shadow: 0 0 18px rgba(255,102,0,1); }
 }
 
 /* ✨ 换人按钮特殊样式 ✨ */

@@ -394,17 +394,15 @@ const CHAR_HEIGHT = 200;
 const GROUND_Y = 0.68; // 地面线位置
 
 const ALLY_SLOTS = [
-  { x: 0.22, y: GROUND_Y - 0.14, row: 'front' },  // 上
-  { x: 0.25, y: GROUND_Y,        row: 'front' },  // 中
-  { x: 0.22, y: GROUND_Y + 0.14, row: 'front' },  // 下
+  { x: 0.20, y: GROUND_Y - 0.09, row: 'front' },
+  { x: 0.23, y: GROUND_Y + 0.03, row: 'front' },
+  { x: 0.20, y: GROUND_Y + 0.15, row: 'front' },
 ];
 
 const ENEMY_SLOTS = [
-  { x: 0.78, y: GROUND_Y - 0.14, row: 'front' },
-  { x: 0.75, y: GROUND_Y,        row: 'front' },
-  { x: 0.78, y: GROUND_Y + 0.14, row: 'front' },
-  { x: 0.81, y: GROUND_Y - 0.07, row: 'back' },
-  { x: 0.81, y: GROUND_Y + 0.07, row: 'back' },
+  { x: 0.80, y: GROUND_Y - 0.09, row: 'front' },
+  { x: 0.77, y: GROUND_Y + 0.03, row: 'front' },
+  { x: 0.80, y: GROUND_Y + 0.15, row: 'front' },
 ];
 
 const GW = 1280, GH = 720;
@@ -435,7 +433,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=33';
+    const V = 'v=34';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -602,8 +600,8 @@ class BattleScene extends Phaser.Scene {
         return;
       }
       
+      this.isWaiting = true; // 必须先锁定，防止 update 重复触发
       if (best.isPlayer) {
-        this.isWaiting = true;
         UI.showAction(this, best);
         const sp = this.sprites[best.name];
         if (sp) this.tweens.add({ targets: sp, alpha: { from: 1, to: 0.6 }, duration: 150, yoyo: true, repeat: 2 });
@@ -1124,15 +1122,20 @@ class BattleScene extends Phaser.Scene {
     }
 
     this.time.delayedCall(350, () => {
-      this._fxMagicProjectile(sp.x, sp.y, this.sprites[tgt]);
-      this.time.delayedCall(250, () => {
-        this._fxFireExplosion(tgt);
-        this._animHit(tgt);
-        this._shake(6, 100);
+      const tgtSp = this.sprites[tgt];
+      if (tgtSp && tgtSp.visible) {
+        this._fxMagicProjectile(sp.x, sp.y, tgtSp);
+        this.time.delayedCall(250, () => {
+          this._fxFireExplosion(tgt);
+          this._animHit(tgt);
+          this._shake(6, 100);
+          Audio.playSkillSound(element);
+        });
+      } else {
         Audio.playSkillSound(element);
-      });
+      }
       sp.clearTint();
-      this.time.delayedCall(600, () => {
+      this.time.delayedCall(700, () => {
         this._resetIdle(caster);
         if (onDone) this.time.delayedCall(50, onDone);
       });
@@ -1296,7 +1299,7 @@ class BattleScene extends Phaser.Scene {
   // ─── Combat Logic ───
   _enemyAI(unit) {
     const alive = this.activeAllies.filter(u => !u.isDead);
-    if (!alive.length) { this._checkEnd(); return; }
+    if (!alive.length) { this.isWaiting = false; this.currentUnit = null; this._checkEnd(); return; }
 
     const sorted = [...alive].sort((a, b) => a.hp - b.hp);
     const tgt = Math.random() < 0.6 ? sorted[0] : Phaser.Utils.Array.GetRandom(alive);
@@ -1329,8 +1332,9 @@ class BattleScene extends Phaser.Scene {
     
     atk.ap -= 1;
     
-    // 动画完成后才判断下一步
-    this._animAttack(atk.name, tgt.name, () => {
+    let _done = false;
+    const finishTurn = () => {
+      if (_done) return; _done = true;
       if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
         this.isWaiting = true;
         UI.showAction(this, atk);
@@ -1339,7 +1343,11 @@ class BattleScene extends Phaser.Scene {
         this.currentUnit = null;
         this._checkEnd();
       }
-    });
+    };
+    
+    this._animAttack(atk.name, tgt.name, finishTurn);
+    // 安全超时：2秒后如果回调没触发就强制解锁
+    this.time.delayedCall(2000, finishTurn);
   }
 
   _doSkill(atk, skill, tgt) {
@@ -1397,16 +1405,21 @@ class BattleScene extends Phaser.Scene {
       
       this._refreshHP();
       
-      // 动画完成后才判断下一步
-      this._animHeal(atk.name, () => {
-        if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
-          this.isWaiting = true;
-          UI.showAction(this, atk);
-        } else {
-          this.isWaiting = false;
-          this.currentUnit = null;
-        }
-      });
+      // 动画完成后才判断下一步（含安全超时）
+      { let _hd = false;
+        const _hft = () => {
+          if (_hd) return; _hd = true;
+          if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
+            this.isWaiting = true;
+            UI.showAction(this, atk);
+          } else {
+            this.isWaiting = false;
+            this.currentUnit = null;
+          }
+        };
+        this._animHeal(atk.name, _hft);
+        this.time.delayedCall(2000, _hft);
+      }
       return;
     }
 
@@ -1422,16 +1435,21 @@ class BattleScene extends Phaser.Scene {
       
       this._refreshHP();
       
-      // 动画完成后才判断下一步
-      this._animHeal(atk.name, () => {
-        if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
-          this.isWaiting = true;
-          UI.showAction(this, atk);
-        } else {
-          this.isWaiting = false;
-          this.currentUnit = null;
-        }
-      });
+      // 动画完成后才判断下一步（含安全超时）
+      { let _hd = false;
+        const _hft = () => {
+          if (_hd) return; _hd = true;
+          if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
+            this.isWaiting = true;
+            UI.showAction(this, atk);
+          } else {
+            this.isWaiting = false;
+            this.currentUnit = null;
+          }
+        };
+        this._animHeal(atk.name, _hft);
+        this.time.delayedCall(2000, _hft);
+      }
       return;
     }
 
@@ -1492,8 +1510,9 @@ class BattleScene extends Phaser.Scene {
     
     this._refreshHP();
     
-    // 动画完成后才判断下一步
-    this._animCast(atk.name, tgt.name, skill.element, () => {
+    let _done = false;
+    const finishTurn = () => {
+      if (_done) return; _done = true;
       if (atk.ap > 0 && atk.isPlayer && !atk.isDead) {
         this.isWaiting = true;
         UI.showAction(this, atk);
@@ -1502,7 +1521,10 @@ class BattleScene extends Phaser.Scene {
         this.currentUnit = null;
         this._checkEnd();
       }
-    });
+    };
+    
+    this._animCast(atk.name, tgt.name, skill.element, finishTurn);
+    this.time.delayedCall(2000, finishTurn);
   }
 
   // ✨ 3+2 轮换：换人 ✨
