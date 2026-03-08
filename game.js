@@ -46,7 +46,7 @@ class BattleUnit {
 const SPRITE_MAP = {
   '云逸': 'yunyi', '灵溪': 'lingxi',
   '红袖': 'fengming', '雪蔷薇': 'moye', '药仙': 'zixuan',
-  '妖狼': 'wolf', '毒蛇精': 'snake', '石魔': 'golem',
+  '妖狼': 'wolf', '毒蝎精': 'snake', '石魔': 'golem',
   '九尾妖狐': 'yaohu', '幽冥鬼王': 'guiwang',
 };
 
@@ -110,7 +110,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=28';  // cache buster — increment to force reload
+    const V = 'v=29';  // cache buster — increment to force reload
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -285,11 +285,11 @@ class BattleScene extends Phaser.Scene {
           new SkillData('噬咬', '猛烈撕咬单体', 5, 22, 'single', 'physical'),
         ]
       }),
-      new BattleUnit('毒蛇精', false, {
+      new BattleUnit('毒蝎精', false, {
         hp: 60, mp: 30, attack: 18, defense: 3, agility: 80, spirit: 12,
         skills: [
           new SkillData('毒雾', '毒气弥漫全体', 15, 15, 'all', 'magical'),
-          new SkillData('蛇吻', '剧毒穿刺单体', 8, 28, 'single', 'magical'),
+          new SkillData('蝎尾刺', '剧毒穿刺单体', 8, 28, 'single', 'magical'),
         ]
       }),
       new BattleUnit('石魔', false, {
@@ -369,9 +369,27 @@ class BattleScene extends Phaser.Scene {
     if (u && u.isDead) return;
     const sp = this.sprites[name], bp = this.basePos[name];
     if (!sp) return;
+
+    // 我方角色血量 < 1/4 时使用受伤待机动画
+    if (u && u.isPlayer && u.hp > 0 && u.hp <= u.maxHp * 0.25) {
+      this._pose(name, 'hit');  // 使用 hit 姿势作为受伤待机
+      sp.setAlpha(1).setAngle(0).setPosition(bp.x, bp.y);
+      sp.setScale(sp.getData('sc'));
+      this.tweens.killTweensOf(sp);
+      // 受伤待机：微微颤抖 + 呼吸起伏更大
+      this.tweens.add({ targets: sp, y: { from: bp.y - 1, to: bp.y + 5 }, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.tweens.add({ targets: sp, x: { from: bp.x - 2, to: bp.x + 2 }, duration: 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      const sc = sp.getData('sc');
+      this.tweens.add({ targets: sp, scaleX: { from: sc * 0.995, to: sc * 1.008 }, scaleY: { from: sc * 0.993, to: sc * 1.01 }, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      // 红色微闪
+      sp.setTint(0xffaaaa);
+      return;
+    }
+
     this._pose(name, 'idle');
     sp.setAlpha(1).setAngle(0).setPosition(bp.x, bp.y);
     sp.setScale(sp.getData('sc'));
+    sp.clearTint();
     this.tweens.killTweensOf(sp);
     this._idleAnim(name);
   }
@@ -524,14 +542,14 @@ class BattleScene extends Phaser.Scene {
     const baseY = sp.y;
 
     if (isAlly) {
-      // ─── 我方：倒下但不消失 ───
+      // ─── 我方：倒下，只显示击败姿势，不做半透明 ───
       this.tweens.chain({
         targets: sp,
         tweens: [
-          { alpha: 0.4, duration: 100, yoyo: true, repeat: 2 },
-          // Collapse + tilt
+          { alpha: 0.6, duration: 80, yoyo: true, repeat: 1 },
+          // Collapse + tilt, keep fully opaque
           { y: baseY + 30 * DPR, scaleY: sc * 0.75, angle: -15,
-            alpha: 0.45, duration: 700, ease: 'Bounce.easeOut' },
+            alpha: 1.0, duration: 700, ease: 'Bounce.easeOut' },
         ]
       });
       // Grey out in side panel
