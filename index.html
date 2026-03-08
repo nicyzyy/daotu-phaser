@@ -8,24 +8,68 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="screen-orientation" content="landscape">
 <title>道途 — 与天争命</title>
-<link rel="stylesheet" href="style.css?v=44">
+<link rel="stylesheet" href="style.css?v=45">
+<style>
+#webview-gate { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#0a0a1a; z-index:999999; color:#dcc07a; text-align:center; font-family:sans-serif; flex-direction:column; align-items:center; justify-content:center; padding:30px; }
+#webview-gate h2 { font-size:28px; margin-bottom:12px; }
+#webview-gate .subtitle { color:#aaa; font-size:14px; margin-bottom:40px; }
+#webview-gate .open-btn { display:inline-block; padding:18px 40px; background:linear-gradient(135deg,#c9a84c,#8b6914); color:#fff; text-decoration:none; border-radius:14px; font-size:20px; font-weight:bold; box-shadow:0 4px 20px rgba(201,168,76,0.4); }
+#webview-gate .steps { color:#888; font-size:13px; margin-top:30px; line-height:2; }
+#webview-gate .copy-btn { display:inline-block; margin-top:15px; padding:10px 24px; background:rgba(255,255,255,0.1); border:1px solid rgba(201,168,76,0.3); border-radius:8px; color:#dcc07a; font-size:14px; cursor:pointer; }
+</style>
 <script>
+// 检测 WebView / 内嵌浏览器
+(function() {
+  var ua = navigator.userAgent || '';
+  var isWebView = /\b(FBAN|FBAV|Instagram|Discord|Line|WeChat|MicroMessenger|QQ|Twitter|Snapchat)\b/i.test(ua)
+    || (/\bKHT\b/.test(ua) && /iPhone|iPad/.test(ua))  // Discord iOS WebView
+    || (!/Safari/.test(ua) && /AppleWebKit/.test(ua))    // iOS WebView without Safari
+    || (/wv\)/.test(ua));                                 // Android WebView
+  
+  if (isWebView) {
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('webview-gate').style.display = 'flex';
+      document.getElementById('game-wrapper').style.display = 'none';
+    });
+    // 不加载 Phaser！
+    window._skipPhaser = true;
+  }
+})();
+
 // 全局错误捕获
-window.onerror = function(msg, url, line, col, err) {
-  document.getElementById('crash-info').style.display = 'block';
-  document.getElementById('crash-detail').textContent = msg + ' @L' + line;
+window.onerror = function(msg, url, line) {
+  var el = document.getElementById('webview-gate');
+  if (el) { el.style.display = 'flex'; }
   return false;
 };
 </script>
-<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js" onerror="document.getElementById('crash-info').style.display='block';document.getElementById('crash-detail').textContent='Phaser CDN failed';"></script>
+<script>
+// 动态加载 Phaser（仅非 WebView）
+if (!window._skipPhaser) {
+  document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><\/scr'+'ipt>');
+}
+</script>
 </head>
 <body>
-<!-- 崩溃提示 + 外部浏览器引导 -->
-<div id="crash-info" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0a1a;z-index:999999;color:#dcc07a;text-align:center;padding:40px 20px;font-family:sans-serif;">
-  <h2 style="margin-bottom:20px;">⚔️ 道途 — 与天争命</h2>
-  <p style="color:#aaa;margin-bottom:30px;">当前浏览器不支持游戏运行</p>
-  <a id="open-external" href="" onclick="this.href=window.location.href" style="display:inline-block;padding:16px 32px;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#fff;text-decoration:none;border-radius:12px;font-size:18px;font-weight:bold;margin-bottom:15px;">🌐 用浏览器打开</a>
-  <p style="color:#666;font-size:12px;margin-top:20px;">Error: <span id="crash-detail">Unknown</span></p>
+<!-- WebView 引导页 -->
+<div id="webview-gate">
+  <h2>⚔️ 道途</h2>
+  <div class="subtitle">与天争命</div>
+  <p style="color:#ff9;margin-bottom:20px;">⚠️ 当前为内嵌浏览器，无法运行游戏</p>
+  <a class="open-btn" href="x-safari-https://nicyzyy.github.io/daotu-phaser/?v=45" id="safari-link">🌐 在 Safari 中打开</a>
+  <div class="steps">
+    或：点右下角 ··· → 「在浏览器中打开」<br>
+    或：复制下方链接到 Chrome / Safari
+  </div>
+  <button class="copy-btn" onclick="navigator.clipboard.writeText('https://nicyzyy.github.io/daotu-phaser/?v=45').then(function(){this.textContent='✅ 已复制！'}.bind(this))">📋 复制链接</button>
+  <script>
+    // iOS: x-safari-https 可直接跳转 Safari
+    // Android: intent:// 跳转默认浏览器
+    if (/Android/i.test(navigator.userAgent)) {
+      document.getElementById('safari-link').href = 'intent://nicyzyy.github.io/daotu-phaser/?v=45#Intent;scheme=https;end';
+      document.getElementById('safari-link').textContent = '🌐 在浏览器中打开';
+    }
+  </script>
 </div>
 <div id="game-wrapper">
   <div id="game-container"></div>
@@ -82,7 +126,7 @@ window.onerror = function(msg, url, line, col, err) {
 <!-- 移动端全屏按钮 -->
 <button id="fullscreen-btn" onclick="toggleFullscreen()">⛶</button>
 
-<script src="game.js?v=44"></script>
+<script src="game.js?v=45"></script>
 <script>
 function toggleFullscreen() {
   const el = document.documentElement;

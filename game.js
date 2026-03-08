@@ -1,3 +1,4 @@
+if (typeof Phaser === 'undefined') { console.log('Phaser not loaded, skipping game init'); } else {
 /* ═══════════════════════════════════════════════════════
    道途 — Phaser 3 AP战斗系统 V5 (3+2轮换+头顶HP+音效+落地感)
    ═══════════════════════════════════════════════════════ */
@@ -434,7 +435,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=44';
+    const V = 'v=45';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     // 只预加载 idle + portrait（快速启动），其他 pose 延迟加载
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
@@ -458,7 +459,7 @@ class BattleScene extends Phaser.Scene {
     UI.log('[战] 战斗开始!', 'system');
     
     // 延迟加载其他 pose（不阻塞战斗开始）
-    const V = 'v=44';
+    const V = 'v=45';
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['attack', 'cast', 'hit', 'defeated']) {
         if (!this.textures.exists(`${folder}_${pose}_left`)) {
@@ -1924,3 +1925,5 @@ setInterval(() => {
     }
   } catch(e) {}
 }, 1000);
+
+}
