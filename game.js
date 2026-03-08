@@ -427,13 +427,14 @@ class BattleScene extends Phaser.Scene {
     this.currentUnit = null;
     this.selectedSkill = null;
     this.isWaiting = false;
+    this._waitStart = 0;
     this.battleActive = false;
     this.defeatedSet = new Set();
     this.atbSpeed = 30;
   }
 
   preload() {
-    const V = 'v=34';
+    const V = 'v=35';
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -574,7 +575,19 @@ class BattleScene extends Phaser.Scene {
   }
 
   update(_, delta) {
-    if (!this.battleActive || this.isWaiting) return;
+    if (!this.battleActive) return;
+    if (this.isWaiting) {
+      if (!this._waitStart) this._waitStart = Date.now();
+      if (Date.now() - this._waitStart > 4000) {
+        console.warn('[道途] isWaiting stuck for 4s, force unlocking');
+        UI.log('[系统] 回合超时，自动恢复', 'system');
+        this.isWaiting = false;
+        this.currentUnit = null;
+        this._waitStart = 0;
+      }
+      return;
+    }
+    this._waitStart = 0;
 
     for (const u of this.allUnits) {
       if (!u.isDead && !u.isBench) u.atb += u.getAtbSpeed() * this.atbSpeed * delta * 0.001;
@@ -594,13 +607,19 @@ class BattleScene extends Phaser.Scene {
       best.tickStatusEffects(this);
       this._refreshHP();
       
+      // DOT 可能杀死 best，或冻结跳过回合
+      if (best.isDead) {
+        this._checkEnd();
+        return; // isWaiting 还是 false，正常继续
+      }
+      
       if (best.hasStatus('冻结')) {
         UI.log(`${best.name} 被冻结，无法行动！`, 'system');
         best.removeStatus('冻结');
-        return;
+        return; // isWaiting 还是 false，正常继续
       }
       
-      this.isWaiting = true; // 必须先锁定，防止 update 重复触发
+      this.isWaiting = true; // 锁定，防止 update 重复触发
       if (best.isPlayer) {
         UI.showAction(this, best);
         const sp = this.sprites[best.name];
@@ -934,7 +953,7 @@ class BattleScene extends Phaser.Scene {
 
   _animAttack(atk, tgt, onDone) {
     const sp = this.sprites[atk], bp = this.basePos[atk], tbp = this.basePos[tgt];
-    if (!sp) { if (onDone) onDone(); return; }
+    if (!sp || !bp || !tbp) { if (onDone) onDone(); return; }
     this.tweens.killTweensOf(sp);
     this._pose(atk, 'attack');
 
@@ -1011,7 +1030,7 @@ class BattleScene extends Phaser.Scene {
 
   _animHit(tgt) {
     const sp = this.sprites[tgt], bp = this.basePos[tgt];
-    if (!sp) return;
+    if (!sp || !bp) return;
     this.tweens.killTweensOf(sp);
     this._pose(tgt, 'hit');
     sp.setTint(0xff3333);
@@ -1097,7 +1116,7 @@ class BattleScene extends Phaser.Scene {
 
   _animCast(caster, tgt, element = '无', onDone) {
     const sp = this.sprites[caster], bp = this.basePos[caster];
-    if (!sp) { if (onDone) onDone(); return; }
+    if (!sp || !bp) { if (onDone) onDone(); return; }
     this.tweens.killTweensOf(sp);
     this._pose(caster, 'cast');
 
@@ -1201,7 +1220,7 @@ class BattleScene extends Phaser.Scene {
 
   _animHeal(name, onDone) {
     const sp = this.sprites[name];
-    if (!sp) { if (onDone) onDone(); return; }
+    if (!sp || !this.basePos[name]) { if (onDone) onDone(); return; }
     this.tweens.killTweensOf(sp);
     this._pose(name, 'cast');
 
@@ -1709,6 +1728,19 @@ const UI = {
       UI.showSwapPanel(scene, unit);
     };
     bc.appendChild(swapBtn);
+    
+    // ─── 结束回合按钮（永远可用！）───
+    const endBtn = document.createElement('button');
+    endBtn.className = 'btn-skill btn-end-turn';
+    endBtn.innerHTML = `<div class="skill-icon">⏭️</div><div class="skill-name">结束</div><div class="skill-cost">跳过</div>`;
+    endBtn.onclick = () => {
+      panel.classList.add('hidden');
+      unit.ap = 0;
+      scene.isWaiting = false;
+      scene.currentUnit = null;
+      scene._checkEnd();
+    };
+    bc.appendChild(endBtn);
     
     panel.classList.remove('hidden');
   },

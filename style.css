@@ -463,3 +463,13 @@ body {
 }
 
 .hidden { display: none !important; }
+
+/* 结束回合按钮 */
+.btn-end-turn {
+  background: linear-gradient(135deg, rgba(80,80,100,0.6), rgba(40,40,60,0.8)) !important;
+  border-color: rgba(150,150,180,0.5) !important;
+}
+.btn-end-turn:hover {
+  background: linear-gradient(135deg, rgba(100,100,130,0.7), rgba(60,60,80,0.9)) !important;
+  border-color: rgba(180,180,200,0.7) !important;
+}
