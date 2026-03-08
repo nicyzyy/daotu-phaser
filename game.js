@@ -110,7 +110,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    const V = 'v=29';  // cache buster — increment to force reload
+    const V = 'v=30';  // cache buster — increment to force reload
     this.load.image('battle_bg', `assets/bg/battle_bg.png?${V}`);
     for (const [, folder] of Object.entries(SPRITE_MAP)) {
       for (const pose of ['idle', 'attack', 'cast', 'hit', 'defeated']) {
@@ -370,19 +370,19 @@ class BattleScene extends Phaser.Scene {
     const sp = this.sprites[name], bp = this.basePos[name];
     if (!sp) return;
 
-    // 我方角色血量 < 1/4 时使用受伤待机动画
+    // 我方角色血量 < 1/4 时：保持 idle 姿势 + 红色闪烁 + 颤抖
     if (u && u.isPlayer && u.hp > 0 && u.hp <= u.maxHp * 0.25) {
-      this._pose(name, 'hit');  // 使用 hit 姿势作为受伤待机
+      this._pose(name, 'idle');  // 保持 idle 姿势，避免 hit 姿势的 AI 瑕疵
       sp.setAlpha(1).setAngle(0).setPosition(bp.x, bp.y);
-      sp.setScale(sp.getData('sc'));
-      this.tweens.killTweensOf(sp);
-      // 受伤待机：微微颤抖 + 呼吸起伏更大
-      this.tweens.add({ targets: sp, y: { from: bp.y - 1, to: bp.y + 5 }, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-      this.tweens.add({ targets: sp, x: { from: bp.x - 2, to: bp.x + 2 }, duration: 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       const sc = sp.getData('sc');
-      this.tweens.add({ targets: sp, scaleX: { from: sc * 0.995, to: sc * 1.008 }, scaleY: { from: sc * 0.993, to: sc * 1.01 }, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-      // 红色微闪
-      sp.setTint(0xffaaaa);
+      sp.setScale(sc);
+      this.tweens.killTweensOf(sp);
+      // 颤抖动画（比正常 idle 更快更大幅度）
+      this.tweens.add({ targets: sp, x: { from: bp.x - 3, to: bp.x + 3 }, duration: 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.tweens.add({ targets: sp, y: { from: bp.y - 2, to: bp.y + 4 }, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      // 红色闪烁（周期性亮暗）
+      this.tweens.add({ targets: sp, alpha: { from: 1.0, to: 0.6 }, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      sp.setTint(0xff8888);
       return;
     }
 
@@ -542,13 +542,13 @@ class BattleScene extends Phaser.Scene {
     const baseY = sp.y;
 
     if (isAlly) {
-      // ─── 我方：倒下，只显示击败姿势，不做半透明 ───
+      // ─── 我方：倒下，不变形不半透明 ───
       this.tweens.chain({
         targets: sp,
         tweens: [
-          { alpha: 0.6, duration: 80, yoyo: true, repeat: 1 },
-          // Collapse + tilt, keep fully opaque
-          { y: baseY + 30 * DPR, scaleY: sc * 0.75, angle: -15,
+          { alpha: 0.7, duration: 80, yoyo: true, repeat: 1 },
+          // 只旋转+下移，不缩放，保持原始比例
+          { y: baseY + 25 * DPR, angle: -25,
             alpha: 1.0, duration: 700, ease: 'Bounce.easeOut' },
         ]
       });
